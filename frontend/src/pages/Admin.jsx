@@ -14,6 +14,7 @@ import {
   X,
   Camera,
   Keyboard,
+  Minus,
   Upload,
   History,
   Sparkles,
@@ -29,6 +30,7 @@ import {
   getLoyalty,
   stampLoyalty,
   resetLoyalty,
+  unstampLoyalty,
   uploadImage,
   listLoyalty,
   getLoyaltyHistory,
@@ -201,6 +203,17 @@ function ScanTab() {
     }
   };
 
+  const handleUnstamp = async () => {
+    if (!scanned) return;
+    try {
+      const updated = await unstampLoyalty(scanned.device_id);
+      setScanned(updated);
+      toast.success(`Stempel fjernet (${updated.stamps}/10)`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Kunne ikke fjerne stempel");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Mode toggle */}
@@ -297,6 +310,31 @@ function ScanTab() {
           >
             Gi stempel
           </button>
+          <button
+            onClick={async () => {
+              const id = manualId.trim();
+              if (!id) return;
+              try {
+                const card = await getLoyalty(id);
+                setScanned(card);
+                if ((card.stamps || 0) <= 0) {
+                  toast.error("Kortet har ingen stempler å fjerne");
+                  return;
+                }
+                const updated = await unstampLoyalty(id);
+                setScanned(updated);
+                toast.success(`Stempel fjernet (${updated.stamps}/10)`);
+              } catch (err) {
+                toast.error(err?.response?.data?.detail || "Kunne ikke fjerne stempel");
+              }
+            }}
+            disabled={!manualId.trim()}
+            data-testid="scan-manual-unstamp"
+            className="mt-2 w-full h-11 rounded-full bg-white border border-[#EBE5DC] text-[#9E4747] font-medium disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-[#FCE8E8]/40"
+          >
+            <Minus size={16} strokeWidth={2} />
+            Fjern stempel
+          </button>
         </div>
       )}
 
@@ -309,6 +347,12 @@ function ScanTab() {
               {scanned.stamps}/10 stempler
             </span>
           </div>
+          {scanned.name && (
+            <p className="text-sm text-[#2C2A26] mb-1" data-testid="scan-result-name">
+              {scanned.name}
+              {scanned.phone ? ` · ${scanned.phone}` : ""}
+            </p>
+          )}
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#9C968C]">ID</p>
           <p className="text-xs font-mono text-[#6B655B] break-all mt-1">{scanned.device_id}</p>
 
@@ -325,11 +369,23 @@ function ScanTab() {
             ))}
           </div>
 
+          {/* Correction action: remove stamp */}
+          {scanned.stamps > 0 && (
+            <button
+              onClick={handleUnstamp}
+              data-testid="scan-result-unstamp"
+              className="mt-4 w-full h-11 rounded-full bg-white border border-[#EBE5DC] text-[#9E4747] font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-[#FCE8E8]/40"
+            >
+              <Minus size={16} strokeWidth={2} />
+              Fjern stempel (angre)
+            </button>
+          )}
+
           {scanned.stamps >= 10 && (
             <button
               onClick={handleReset}
               data-testid="scan-reset"
-              className="mt-5 w-full h-12 rounded-full bg-[#2C2A26] hover:bg-black text-white font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              className="mt-3 w-full h-12 rounded-full bg-[#2C2A26] hover:bg-black text-white font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform"
             >
               <RefreshCw size={16} strokeWidth={1.5} />
               Tilbakestill kort (10/10)

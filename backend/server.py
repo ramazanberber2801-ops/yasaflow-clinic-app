@@ -75,6 +75,15 @@ class LoyaltyCard(BaseModel):
     total_completed: int = 0
     last_stamped_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    profile_saved_at: Optional[datetime] = None
+
+
+class ProfilePayload(BaseModel):
+    device_id: str
+    name: str
+    phone: str
 
 
 class StampResponse(BaseModel):
@@ -340,6 +349,57 @@ async def reset_loyalty(payload: LoyaltyAction):
         "milestone": None,
         "created_at": now,
     }))
+    updated = await db.loyalty.find_one({"device_id": payload.device_id})
+    return LoyaltyCard(**_clean(updated))
+
+
+@api_router.post("/loyalty/unstamp", response_model=LoyaltyCard, dependencies=[Depends(require_admin)])
+async def unstamp_loyalty(payload: LoyaltyAction):
+    doc = await db.loyalty.find_one({"device_id": payload.device_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kort ikke funnet")
+    current = doc.get("stamps", 0)
+    if current <= 0:
+        raise HTTPException(status_code=400, detail="Kortet har ingen stempler å fjerne")
+    new_stamps = current - 1
+    now = datetime.now(timezone.utc)
+    await db.loyalty.update_one(
+        {"device_id": payload.device_id},
+        {"$set": {"stamps": new_stamps, "last_stamped_at": now.isoformat()}},
+    )
+    await db.loyalty_events.insert_one(_ser({
+        "id": str(uuid.uuid4()),
+        "device_id": payload.device_id,
+        "type": "unstamp",
+        "stamps_after": new_stamps,
+        "milestone": None,
+        "created_at": now,
+    }))
+    updated = await db.loyalty.find_one({"device_id": payload.device_id})
+    return LoyaltyCard(**_clean(updated))
+
+
+# Customer-facing: save name + phone to their own device card (no auth, scoped by device_id)
+@api_router.post("/loyalty/profile", response_model=LoyaltyCard)
+async def save_profile(payload: ProfilePayload):
+    name = payload.name.strip()
+    phone = payload.phone.strip()
+    if not name or len(name) < 2:
+        raise HTTPException(status_code=400, detail="Vennligst skriv inn et gyldig navn")
+    if not phone or len(phone.replace(" ", "")) < 6:
+        raise HTTPException(status_code=400, detail="Vennligst skriv inn et gyldig mobilnummer")
+    now = datetime.now(timezone.utc)
+    doc = await db.loyalty.find_one({"device_id": payload.device_id})
+    if not doc:
+        card = LoyaltyCard(
+            device_id=payload.device_id, name=name, phone=phone, profile_saved_at=now
+        )
+        await db.loyalty.insert_one(_ser(card.model_dump()))
+        return card
+    await db.loyalty.update_one(
+        {"device_id": payload.device_id},
+        {"$set": {"name": name, "phone": phone, "profile_saved_at": now.isoformat()}},
+    )
     updated = await db.loyalty.find_one({"device_id": payload.device_id})
     return LoyaltyCard(**_clean(updated))
 

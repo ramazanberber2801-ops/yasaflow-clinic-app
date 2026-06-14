@@ -47,6 +47,16 @@ export const stampLoyalty = (deviceId) =>
   api.post("/loyalty/stamp", { device_id: deviceId }).then((r) => r.data);
 export const resetLoyalty = (deviceId) =>
   api.post("/loyalty/reset", { device_id: deviceId }).then((r) => r.data);
+export const unstampLoyalty = (deviceId) =>
+  api.post("/loyalty/unstamp", { device_id: deviceId }).then((r) => r.data);
+export const saveLoyaltyProfile = (deviceId, name, phone) =>
+  axios
+    .post(
+      `${API}/loyalty/profile`,
+      { device_id: deviceId, name, phone },
+      { headers: { "Content-Type": "application/json" } }
+    )
+    .then((r) => r.data);
 export const listLoyalty = () => api.get("/admin/loyalty").then((r) => r.data);
 export const getLoyaltyHistory = (deviceId) =>
   api.get(`/admin/loyalty/${deviceId}/history`).then((r) => r.data);

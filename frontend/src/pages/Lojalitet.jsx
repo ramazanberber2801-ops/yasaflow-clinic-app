@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Check, QrCode } from "lucide-react";
+import { Sparkles, Check, QrCode, Shield, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 import QRModal from "@/components/QRModal";
 import { getDeviceId } from "@/lib/deviceId";
@@ -18,16 +19,54 @@ export default function Lojalitet() {
   const [completed, setCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
   const [qrOpen, setQrOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [savedName, setSavedName] = useState("");
+  const [savedPhone, setSavedPhone] = useState("");
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const refresh = async () => {
     try {
       const card = await getLoyalty(deviceId);
       setStamps(card.stamps || 0);
       setCompleted(card.total_completed || 0);
+      if (card.name) setSavedName(card.name);
+      if (card.phone) setSavedPhone(card.phone);
+      if (!card.name && !card.phone) setEditingProfile(true);
     } catch (e) {
       // ignore
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!name.trim() || !phone.trim()) {
+      toast.error("Vennligst fyll inn både navn og mobilnummer");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const updated = await saveLoyaltyProfile(deviceId, name.trim(), phone.trim());
+      setSavedName(updated.name || name.trim());
+      setSavedPhone(updated.phone || phone.trim());
+      setEditingProfile(false);
+      setName("");
+      setPhone("");
+      toast.success(
+        "Kortet ditt er nå sikret! Hvis du bytter telefon i fremtiden, kan klinikken enkelt gjenopprette stemplene dine ved hjelp av mobilnummeret ditt.",
+        { duration: 7000 }
+      );
+    } catch (err) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Kunne ikke lagre profil. Sjekk internett og prøv igjen.";
+      console.error("Profile save failed:", err?.response || err);
+      toast.error(msg);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -148,6 +187,115 @@ export default function Lojalitet() {
         <p className="text-center text-xs text-[#6B655B] mt-4 px-6 leading-relaxed">
           Vis QR-koden til personalet etter hver behandling for å samle stempel.
         </p>
+
+        {/* Profile backup */}
+        <section
+          className="mt-8 bg-white rounded-3xl p-6 border border-[#EBE5DC]/60 shadow-[0_4px_24px_rgba(44,42,38,0.05)]"
+          data-testid="profile-backup-section"
+        >
+          <div className="flex items-start gap-3 mb-1">
+            <div className="w-10 h-10 rounded-full bg-[#F4ECD8] flex items-center justify-center shrink-0">
+              <Shield size={18} strokeWidth={1.5} className="text-[#B89953]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif-display text-xl text-[#2C2A26] leading-tight">
+                  Sikre stempelkortet ditt
+                </h3>
+                <span className="text-[9px] tracking-[0.2em] uppercase bg-[#F4ECD8] text-[#8C6B2F] px-2 py-0.5 rounded-full">
+                  Anbefalt
+                </span>
+              </div>
+              <p className="text-xs text-[#6B655B] mt-1 leading-relaxed">
+                Knytt navnet og mobilnummeret ditt til kortet — så kan klinikken
+                gjenopprette stemplene dine om du bytter telefon.
+              </p>
+            </div>
+          </div>
+
+          {savedName && !editingProfile ? (
+            <div className="mt-4 pt-4 border-t border-[#EBE5DC]" data-testid="profile-saved">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] tracking-[0.2em] uppercase text-[#9C968C]">
+                    Sikret som
+                  </div>
+                  <div className="text-[#2C2A26] mt-1 truncate">{savedName}</div>
+                  <div className="text-xs text-[#6B655B] mt-0.5">{savedPhone}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setName(savedName);
+                    setPhone(savedPhone);
+                    setEditingProfile(true);
+                  }}
+                  data-testid="profile-edit"
+                  className="flex items-center gap-1.5 text-xs text-[#B89953] hover:text-[#8C6B2F] px-3 py-2 rounded-full bg-[#F4ECD8]/60 hover:bg-[#F4ECD8]"
+                >
+                  <Pencil size={12} strokeWidth={1.75} />
+                  Endre
+                </button>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs text-[#4A6741]">
+                <Check size={14} strokeWidth={2} />
+                <span>Kortet ditt er sikret</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 pt-4 border-t border-[#EBE5DC] space-y-3" data-testid="profile-form">
+              <div>
+                <label className="text-[10px] tracking-[0.2em] uppercase text-[#6B655B] block mb-1.5">
+                  Navn
+                </label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Fornavn Etternavn"
+                  data-testid="profile-name-input"
+                  className="rounded-2xl h-11 border-[#EBE5DC]"
+                  autoComplete="name"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] tracking-[0.2em] uppercase text-[#6B655B] block mb-1.5">
+                  Mobilnummer
+                </label>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+47 ..."
+                  inputMode="tel"
+                  data-testid="profile-phone-input"
+                  className="rounded-2xl h-11 border-[#EBE5DC]"
+                  autoComplete="tel"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  data-testid="profile-save-button"
+                  className="flex-1 h-12 rounded-full bg-[#C5A059] hover:bg-[#B89953] text-white font-medium disabled:opacity-50 active:scale-95 transition-transform"
+                >
+                  {savingProfile ? "Lagrer..." : "Lagre profil"}
+                </button>
+                {savedName && (
+                  <button
+                    onClick={() => {
+                      setEditingProfile(false);
+                      setName("");
+                      setPhone("");
+                    }}
+                    data-testid="profile-cancel-button"
+                    className="h-12 px-5 rounded-full bg-[#F4F0EA] text-[#2C2A26] font-medium active:scale-95"
+                  >
+                    Avbryt
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
       <QRModal open={qrOpen} onClose={() => setQrOpen(false)} deviceId={deviceId} />
