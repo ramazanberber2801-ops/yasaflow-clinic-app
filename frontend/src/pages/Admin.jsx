@@ -897,7 +897,7 @@ function HistoryTab() {
       <RegisteredCustomers
         list={list}
         loading={loading}
-        onChange={() => listLoyalty().then(setList).catch(() => {})}
+        onChange={() => listLoyalty().then(setList).catch((e) => console.error("[REFRESH]", e))}
       />
     </div>
   );
@@ -926,14 +926,19 @@ function RegisteredCustomers({ list, loading, onChange }) {
     : registered;
 
   const handleDelete = async (c) => {
-    if (!window.confirm(`Er du sikker på at du vil slette ${c.name} og alle tilhørende stempler?`)) return;
+    console.log("[DELETE]", c.device_id, c.name);
+    const ok = window.confirm(`Er du sikker på at du vil slette ${c.name}?`);
+    console.log("[DELETE] confirm =", ok);
+    if (!ok) return;
     setBusy(true);
     try {
-      await deleteCustomer(c.device_id);
+      const res = await deleteCustomer(c.device_id);
+      console.log("[DELETE] response", res);
       toast.success(`${c.name} slettet`);
-      onChange?.();
+      await onChange?.();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Kunne ikke slette");
+      console.error("[DELETE] failed", e?.response || e);
+      toast.error(e?.response?.data?.detail || e?.message || "Kunne ikke slette");
     } finally {
       setBusy(false);
     }
@@ -954,16 +959,21 @@ function RegisteredCustomers({ list, loading, onChange }) {
       const tb = b.last_stamped_at ? new Date(b.last_stamped_at).getTime() : 0;
       return tb - ta;
     })[0];
-    if (!window.confirm(
-      `Er du sikker?\n\nSlå sammen ${source.stamps}/10 stempler fra "${source.name}" inn i "${target.name}" (${target.stamps}/10).\n\nDet gamle kortet slettes etter sammenslåing.`
-    )) return;
+    console.log("[MERGE]", source.device_id, "->", target.device_id);
+    const ok = window.confirm(
+      `Slå sammen ${source.stamps}/10 fra "${source.name}" inn i "${target.name}" (${target.stamps}/10)?`
+    );
+    console.log("[MERGE] confirm =", ok);
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await transferStamps(source.device_id, target.device_id);
+      console.log("[MERGE] response", res);
       toast.success(`Slått sammen! ${target.name} har nå ${res.merged_stamps}/10 stempler.`);
-      onChange?.();
+      await onChange?.();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Kunne ikke slå sammen");
+      console.error("[MERGE] failed", e?.response || e);
+      toast.error(e?.response?.data?.detail || e?.message || "Kunne ikke slå sammen");
     } finally {
       setBusy(false);
     }
