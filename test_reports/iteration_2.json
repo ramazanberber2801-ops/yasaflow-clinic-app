@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 2 end-to-end testing of Seldaesthetic: JWT auth enforcement, image upload to Emergent object storage, loyalty milestones + history, 3-tab Admin panel, customer milestone toasts, and PWA manifest/SW. Backend: 12/12 pytest passed. Frontend: all critical flows + data-testids verified.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Global", "issues": ["Emergent dev badge (#emergent-badge) overlays bottom area on mobile viewport; can intercept clicks. Cosmetic / Emergent platform overlay, not app code."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_seldaesthetic.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py still uses deprecated @app.on_event('startup'/'shutdown'); migrate to lifespan context manager.",
+    "JWT_SECRET defaults to 'change-me' if env not set — ensure JWT_SECRET is set via env in production deploys, else tokens become forgeable.",
+    "ADMIN_PASSWORD still defaults to hardcoded 'selda123' fallback — enforce env-only in production.",
+    "/api/files/{path:path} hits object storage on every request without caching; add HTTP Cache-Control headers (e.g., immutable, max-age=31536000) since file paths are immutable UUIDs.",
+    "Stamp endpoint inserts an event AFTER updating card; not atomic — under concurrent stamps the same device could exceed 10 (race). Consider find_one_and_update with stamps<10 filter.",
+    "Reset still increments total_completed only when stamps>=10 (silently zeros partial cards). Consider 400 if stamps<10 or document.",
+    "InstallPrompt registers SW only in NODE_ENV=production; document expected behaviour in dev/preview where service worker won't actually register (manifest still served)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_seldaesthetic.py (rewritten for iter 2 — JWT auth, milestones, history, upload)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (all critical flows incl. 3 admin tabs, history detail+back, image uploader testids, milestone toast, logout clears tokens, manifest+SW reachable)"},
+  "test_credentials": "Admin password: selda123 (from /app/memory/test_credentials.md). JWT obtained via POST /api/admin/login.",
+  "seed_data_creation": "Created TEST_PW_Offer_Iter2 (deleted post-test). Created DEV_ITER2_* loyalty cards (one milestone+reset, one history, one UI seed with 4 stamps, one toast seed). All TEST_/DEV_ITER2_ prefixed so easy cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/test_seldaesthetic.py — run: REACT_APP_BACKEND_URL=<url> pytest backend/tests/test_seldaesthetic.py -v. Upload test will skip with 503 if EMERGENT_LLM_KEY missing — currently working (uploaded 70-byte PNG and downloaded via /api/files/*). Admin auth: POST /api/admin/login {password:'selda123'} returns {success,token}; send token as Authorization: Bearer <token> on all admin write endpoints. Frontend admin route: pre-seed sessionStorage('seld_admin'='1', 'seld_admin_token'=<jwt>) to bypass 5-tap footer trigger. Mobile viewport 414x900; remove #emergent-badge before clicks. Milestone toast for customer requires the page to be loaded once before the stamp increment so the previous-stamps sessionStorage key is set.",
+  "rca of the issue": "No bugs found. Iter 2 implementation matches spec — JWT enforced on all 7 admin endpoints + upload, invalid token rejected, milestone fields correct at 3/6/10, history events ordered desc with stamp+reset types, upload roundtrip works, 3 admin tabs render with correct testids, history list/search/row/detail/back flow works, image uploader testids present, milestone toast renders ('Du har låst opp 10% rabatt på neste behandling!'), logout clears both sessionStorage keys, manifest.json valid (name/short_name/start_url/display=standalone/theme #C5A059/2 icons) and service-worker.js reachable."
+}

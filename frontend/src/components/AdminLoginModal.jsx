@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Lock } from "lucide-react";
-import { adminLogin } from "@/lib/api";
+import { adminLogin, setAdminToken } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function AdminLoginModal({ open, onClose, onSuccess }) {
@@ -13,7 +13,8 @@ export default function AdminLoginModal({ open, onClose, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await adminLogin(pwd);
+      const res = await adminLogin(pwd);
+      if (res?.token) setAdminToken(res.token);
       sessionStorage.setItem("seld_admin", "1");
       toast.success("Velkommen, admin");
       setPwd("");

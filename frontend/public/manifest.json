@@ -1,0 +1,27 @@
+{
+  "name": "Seldaesthetic – Skjønnhetsklinikk",
+  "short_name": "Seldaesthetic",
+  "description": "Premium aesthetic clinic – book treatments, collect loyalty stamps and discover current offers.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDFBF7",
+  "theme_color": "#C5A059",
+  "lang": "nb",
+  "categories": ["lifestyle", "health", "beauty"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

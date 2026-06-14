@@ -8,6 +8,10 @@ import Lojalitet from "@/pages/Lojalitet";
 import Kontakt from "@/pages/Kontakt";
 import Gavekort from "@/pages/Gavekort";
 import Admin from "@/pages/Admin";
+import InstallPrompt from "@/components/InstallPrompt";
+import { registerSW } from "@/registerSW";
+
+registerSW();
 
 function App() {
   return (
@@ -36,6 +40,7 @@ function App() {
           },
         }}
       />
+      <InstallPrompt />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Check, QrCode } from "lucide-react";
+import { toast } from "sonner";
 import Header from "@/components/Header";
 import QRModal from "@/components/QRModal";
 import { getDeviceId } from "@/lib/deviceId";
@@ -41,6 +42,27 @@ export default function Lojalitet() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Milestone celebration: detect stamp transitions that hit 3 / 6 / 10
+  useEffect(() => {
+    if (loading) return;
+    const KEY = "seld_last_stamps";
+    const prev = parseInt(sessionStorage.getItem(KEY) || "-1", 10);
+    if (prev >= 0 && stamps > prev) {
+      const REWARDS_TEXT = {
+        3: "Du har låst opp 10% rabatt på neste behandling!",
+        6: "Du har låst opp 20% rabatt på neste behandling!",
+        10: "Du har låst opp en GRATIS peel-behandling!",
+      };
+      if (REWARDS_TEXT[stamps]) {
+        // Mini celebration
+        toast.success(REWARDS_TEXT[stamps], { duration: 6000 });
+        // Vibrate if supported
+        try { navigator.vibrate?.([60, 40, 120]); } catch {}
+      }
+    }
+    sessionStorage.setItem(KEY, String(stamps));
+  }, [stamps, loading]);
 
   return (
     <div data-testid="page-lojalitet">

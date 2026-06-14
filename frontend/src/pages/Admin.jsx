@@ -14,6 +14,10 @@ import {
   X,
   Camera,
   Keyboard,
+  Upload,
+  History,
+  Sparkles,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
@@ -25,6 +29,10 @@ import {
   getLoyalty,
   stampLoyalty,
   resetLoyalty,
+  uploadImage,
+  listLoyalty,
+  getLoyaltyHistory,
+  BACKEND_ORIGIN,
 } from "@/lib/api";
 
 export default function Admin() {
@@ -38,6 +46,7 @@ export default function Admin() {
 
   const logout = () => {
     sessionStorage.removeItem("seld_admin");
+    sessionStorage.removeItem("seld_admin_token");
     navigate("/", { replace: true });
   };
 
@@ -67,20 +76,27 @@ export default function Admin() {
 
       <div className="max-w-screen-md mx-auto px-4 py-6">
         <Tabs defaultValue="scan" className="w-full">
-          <TabsList className="grid grid-cols-2 bg-white rounded-full p-1 border border-[#EBE5DC] mb-6 h-auto">
+          <TabsList className="grid grid-cols-3 bg-white rounded-full p-1 border border-[#EBE5DC] mb-6 h-auto">
             <TabsTrigger
               value="scan"
               data-testid="admin-tab-scan"
-              className="rounded-full py-2.5 data-[state=active]:bg-[#C5A059] data-[state=active]:text-white text-[#6B655B]"
+              className="rounded-full py-2.5 text-xs sm:text-sm data-[state=active]:bg-[#C5A059] data-[state=active]:text-white text-[#6B655B]"
             >
-              Scan Lojalitetskort
+              Scan
             </TabsTrigger>
             <TabsTrigger
               value="offers"
               data-testid="admin-tab-offers"
-              className="rounded-full py-2.5 data-[state=active]:bg-[#C5A059] data-[state=active]:text-white text-[#6B655B]"
+              className="rounded-full py-2.5 text-xs sm:text-sm data-[state=active]:bg-[#C5A059] data-[state=active]:text-white text-[#6B655B]"
             >
-              Administrere Tilbud
+              Tilbud
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              data-testid="admin-tab-history"
+              className="rounded-full py-2.5 text-xs sm:text-sm data-[state=active]:bg-[#C5A059] data-[state=active]:text-white text-[#6B655B]"
+            >
+              Historikk
             </TabsTrigger>
           </TabsList>
 
@@ -89,6 +105,9 @@ export default function Admin() {
           </TabsContent>
           <TabsContent value="offers" className="mt-0">
             <OffersTab />
+          </TabsContent>
+          <TabsContent value="history" className="mt-0">
+            <HistoryTab />
           </TabsContent>
         </Tabs>
       </div>
@@ -156,10 +175,16 @@ function ScanTab() {
         return;
       }
       const updated = await stampLoyalty(id);
-      setScanned(updated);
+      setScanned({ ...updated });
       setSuccess(true);
-      toast.success(`+1 stempel! (${updated.stamps}/10)`);
-      setTimeout(() => setSuccess(false), 1800);
+      if (updated.milestone) {
+        toast.success(`🎉 Milepæl nådd: ${updated.milestone}! (${updated.stamps}/10)`, {
+          duration: 5000,
+        });
+      } else {
+        toast.success(`+1 stempel! (${updated.stamps}/10)`);
+      }
+      setTimeout(() => setSuccess(false), 2200);
     } catch (e) {
       toast.error("Ugyldig QR-kode eller serverfeil");
     }
@@ -480,19 +505,11 @@ function OffersTab() {
             />
           </FormField>
 
-          <FormField label="Bilde URL">
-            <Input
+          <FormField label="Bilde">
+            <ImageUploader
               value={form.image_url}
-              onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-              placeholder="https://..."
-              className="rounded-2xl h-11 border-[#EBE5DC]"
-              data-testid="offer-input-image"
+              onChange={(url) => setForm({ ...form, image_url: url })}
             />
-            {form.image_url && (
-              <div className="mt-3 rounded-2xl overflow-hidden border border-[#EBE5DC]">
-                <img src={form.image_url} alt="preview" className="promo-img" />
-              </div>
-            )}
           </FormField>
 
           <button
@@ -564,6 +581,261 @@ function FormField({ label, children }) {
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+/* ===== Image Uploader ===== */
+function ImageUploader({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [mode, setMode] = useState(value ? "preview" : "upload");
+  const inputRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vennligst velg en bildefil");
+      return;
+    }
+    setUploading(true);
+    setProgress(0);
+    try {
+      const res = await uploadImage(file, (e) => {
+        if (e.total) setProgress(Math.round((e.loaded * 100) / e.total));
+      });
+      onChange(res.full_url);
+      setMode("preview");
+      toast.success("Bilde lastet opp");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Opplasting feilet");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div data-testid="offer-image-uploader">
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          type="button"
+          onClick={() => setMode("upload")}
+          className={`text-xs px-3 py-1.5 rounded-full ${mode === "upload" ? "bg-[#C5A059] text-white" : "bg-[#F4F0EA] text-[#6B655B]"}`}
+        >
+          Last opp
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("url")}
+          className={`text-xs px-3 py-1.5 rounded-full ${mode === "url" ? "bg-[#C5A059] text-white" : "bg-[#F4F0EA] text-[#6B655B]"}`}
+        >
+          Bruk URL
+        </button>
+      </div>
+
+      {mode === "upload" && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          data-testid="offer-image-upload-button"
+          className="w-full border-2 border-dashed border-[#C5A059]/40 bg-[#FDFBF7] rounded-2xl p-6 flex flex-col items-center gap-2 hover:border-[#C5A059] transition-colors disabled:opacity-60"
+        >
+          <Upload size={22} strokeWidth={1.5} className="text-[#B89953]" />
+          <span className="text-sm text-[#6B655B]">
+            {uploading ? `Laster opp... ${progress}%` : "Trykk for å velge bilde"}
+          </span>
+          <span className="text-[10px] text-[#9C968C]">JPG/PNG/WEBP, maks 8MB</span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            data-testid="offer-image-file-input"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+        </button>
+      )}
+
+      {mode === "url" && (
+        <Input
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://..."
+          className="rounded-2xl h-11 border-[#EBE5DC]"
+          data-testid="offer-input-image"
+        />
+      )}
+
+      {value && (
+        <div className="mt-3 rounded-2xl overflow-hidden border border-[#EBE5DC]">
+          <img src={value} alt="preview" className="promo-img" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== History Tab ===== */
+function HistoryTab() {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [history, setHistory] = useState(null);
+  const [histLoading, setHistLoading] = useState(false);
+
+  useEffect(() => {
+    listLoyalty()
+      .then(setList)
+      .catch(() => toast.error("Kunne ikke laste kunder"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const open = async (deviceId) => {
+    setSelected(deviceId);
+    setHistory(null);
+    setHistLoading(true);
+    try {
+      const data = await getLoyaltyHistory(deviceId);
+      setHistory(data);
+    } catch {
+      toast.error("Kunne ikke laste historikk");
+    } finally {
+      setHistLoading(false);
+    }
+  };
+
+  const filtered = list.filter((c) =>
+    c.device_id.toLowerCase().includes(query.toLowerCase())
+  );
+
+  if (selected) {
+    return (
+      <div className="space-y-4" data-testid="history-detail">
+        <button
+          onClick={() => {
+            setSelected(null);
+            setHistory(null);
+          }}
+          className="flex items-center gap-2 text-sm text-[#6B655B] hover:text-[#2C2A26]"
+          data-testid="history-back"
+        >
+          <ArrowLeft size={16} strokeWidth={1.5} /> Tilbake til kundeliste
+        </button>
+
+        {histLoading ? (
+          <div className="text-center py-8 text-[#6B655B] text-sm">Laster historikk...</div>
+        ) : history ? (
+          <>
+            <div className="bg-white rounded-3xl p-5 border border-[#EBE5DC]/60">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-serif-display text-2xl text-[#2C2A26]">Kunde</div>
+                <span className="text-xs bg-[#F4ECD8] text-[#8C6B2F] px-3 py-1 rounded-full">
+                  {history.card.stamps}/10 • {history.card.total_completed} fullført
+                </span>
+              </div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#9C968C]">ID</p>
+              <p className="text-xs font-mono text-[#6B655B] break-all mt-1">
+                {history.card.device_id}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-3xl p-5 border border-[#EBE5DC]/60">
+              <h3 className="font-serif-display text-xl text-[#2C2A26] mb-4">Aktivitet</h3>
+              {history.events.length === 0 ? (
+                <p className="text-sm text-[#6B655B]">Ingen hendelser ennå.</p>
+              ) : (
+                <ul className="space-y-3" data-testid="history-events">
+                  {history.events.map((ev) => (
+                    <li key={ev.id} className="flex items-start gap-3 pb-3 border-b border-[#EBE5DC] last:border-0">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                          ev.type === "reset"
+                            ? "bg-[#FCE8E8] text-[#9E4747]"
+                            : ev.milestone
+                            ? "bg-[#C5A059] text-white"
+                            : "bg-[#F4ECD8] text-[#B89953]"
+                        }`}
+                      >
+                        {ev.type === "reset" ? (
+                          <RefreshCw size={14} strokeWidth={1.75} />
+                        ) : ev.milestone ? (
+                          <Sparkles size={14} strokeWidth={1.75} />
+                        ) : (
+                          <Check size={14} strokeWidth={2} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-[#2C2A26]">
+                          {ev.type === "reset"
+                            ? "Kort tilbakestilt"
+                            : ev.milestone
+                            ? `Stempel #${ev.stamps_after} — milepæl: ${ev.milestone}`
+                            : `Stempel #${ev.stamps_after}`}
+                        </div>
+                        <div className="text-[10px] text-[#9C968C] mt-0.5">
+                          {new Date(ev.created_at).toLocaleString("no-NO")}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9C968C]" strokeWidth={1.5} />
+        <Input
+          placeholder="Søk etter kunde-ID..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          data-testid="history-search"
+          className="pl-10 rounded-2xl h-12 border-[#EBE5DC] bg-white"
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-[#6B655B] text-sm">Laster...</div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-3xl p-8 text-center border border-[#EBE5DC]/60 text-[#6B655B] text-sm">
+          Ingen kunder ennå. Skann et lojalitetskort for å starte.
+        </div>
+      ) : (
+        <div className="space-y-2" data-testid="history-list">
+          {filtered.map((c) => (
+            <button
+              key={c.device_id}
+              onClick={() => open(c.device_id)}
+              data-testid={`history-row-${c.device_id}`}
+              className="w-full bg-white rounded-2xl p-4 border border-[#EBE5DC]/60 flex items-center gap-3 hover:bg-[#FDFBF7] active:scale-[0.99] transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#F4ECD8] flex items-center justify-center shrink-0">
+                <History size={16} strokeWidth={1.5} className="text-[#B89953]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-mono text-[#6B655B] truncate">{c.device_id}</div>
+                <div className="text-[10px] text-[#9C968C] mt-0.5">
+                  {c.last_stamped_at
+                    ? `Sist: ${new Date(c.last_stamped_at).toLocaleDateString("no-NO")}`
+                    : "Ingen stempler ennå"}
+                </div>
+              </div>
+              <span className="text-xs bg-[#F4ECD8] text-[#8C6B2F] px-3 py-1 rounded-full shrink-0">
+                {c.stamps}/10
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
