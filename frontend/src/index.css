@@ -1,115 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --seld-bg: #FDFBF7;
+  --seld-bg-2: #F4F0EA;
+  --seld-card: #FFFFFF;
+  --seld-active: #F0E9DF;
+  --seld-text: #2C2A26;
+  --seld-text-2: #6B655B;
+  --seld-gold: #C5A059;
+  --seld-gold-dark: #B89953;
+  --seld-gold-light: #F4ECD8;
+  --seld-gold-text: #8C6B2F;
+  --seld-border: #EBE5DC;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
 body {
-    margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  background: var(--seld-bg);
+  color: var(--seld-text);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+.font-serif-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.font-body {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Subtle paper-grain background using radial dots */
+.bg-paper {
+  background-color: var(--seld-bg);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(197,160,89,0.06) 0%, transparent 35%),
+    radial-gradient(circle at 90% 2%, rgba(197,160,89,0.05) 0%, transparent 30%);
+}
+
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Promo image - strict 16:9 cover (per requirement) */
+.promo-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Smooth stamp pulse */
+@keyframes goldPulse {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.stamp-pop { animation: goldPulse 0.55s ease-out both; }
+
+@keyframes successPop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.success-pop { animation: successPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.5s ease-out both; }
+
+/* hide scrollbar in admin iframes/panels */
+.scroll-hide::-webkit-scrollbar { display: none; }
+
+/* Hard reset shadcn defaults that conflict */
+@layer base {
+  :root {
+    --background: 36 36% 98%;
+    --foreground: 36 8% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 36 8% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 36 8% 16%;
+    --primary: 36 50% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 36 25% 92%;
+    --secondary-foreground: 36 8% 16%;
+    --muted: 36 25% 94%;
+    --muted-foreground: 36 8% 40%;
+    --accent: 36 50% 90%;
+    --accent-foreground: 36 30% 30%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 22% 88%;
+    --input: 36 22% 88%;
+    --ring: 36 50% 56%;
+    --radius: 1rem;
+  }
 }
 
 @layer base {
-    :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-    }
-}
-
-@layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
-}
-
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
-
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }
