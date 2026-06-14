@@ -14,42 +14,49 @@ Critical features:
 - html5-qrcode camera + manual fallback for stamp scanning
 - Bestill tab → iframe `https://bestill.timma.no/seldaesthetic`
 - Kjøp Gavekort → iframe `https://bestill.timma.no/giftcard/seldaesthetic`
-- Admin password verified by backend
+- Admin password verified by backend (JWT issued)
+- Image upload to Emergent object storage
+- PWA installable + offline shell caching
 
 ## User Personas
-- **Customer (anonymous)**: visits app, browses offers, collects loyalty stamps, books via Timma.
-- **Clinic Staff (admin)**: scans customer QRs to award stamps, manages "Aktuelle Tilbud" content.
+- **Customer (anonymous)**: visits app, browses offers, collects loyalty stamps, books via Timma, can install to home screen.
+- **Clinic Staff (admin)**: logs in (JWT), scans customer QRs to award stamps, manages offers with direct image upload, reviews each customer's loyalty history.
 
 ## Architecture
-- Backend: FastAPI + Motor (Mongo), all routes prefixed `/api`
-  - `GET/POST/PUT/DELETE /api/offers`
-  - `GET /api/loyalty/{device_id}`, `POST /api/loyalty/stamp`, `POST /api/loyalty/reset`
-  - `POST /api/admin/login`
-  - Auto-seeds default offer "Hydra Skin Deluxe Behandling"
+- Backend: FastAPI + Motor (Mongo) + PyJWT, all routes prefixed `/api`
+  - Public: `GET /offers`, `GET /loyalty/{device_id}`, `POST /admin/login`, `GET /files/{path}`
+  - **Bearer-protected** (`require_admin` dep): `POST/PUT/DELETE /offers`, `POST /loyalty/stamp`, `POST /loyalty/reset`, `GET /admin/loyalty`, `GET /admin/loyalty/{id}/history`, `POST /upload`, `GET /admin/verify`
+  - Logs every loyalty event (stamp/reset + milestone) in `loyalty_events` collection
+  - Stamp response includes `milestone` field (`"10%"`, `"20%"`, `"Gratis peel"`, or `null`)
+  - Auto-seeds default offer at startup, initializes Emergent object storage session
 - Frontend: React 19 + React Router 7 + Tailwind + shadcn/ui
-  - Pages: Hjem, Bestill (iframe), Gavekort (iframe), Lojalitet, Kontakt, Admin
-  - libs: `qrcode.react` (QR display), `html5-qrcode` (QR scan), `sonner` (toasts)
-  - Anonymous device id stored in `localStorage` key `seld_device_id`
-  - Admin gate uses `sessionStorage` key `seld_admin`
+  - Pages: Hjem, Bestill (iframe), Gavekort (iframe), Lojalitet, Kontakt, Admin (3 tabs: Scan / Tilbud / Historikk)
+  - Axios interceptor injects Bearer token; 401 clears session
+  - ImageUploader: drag-style button, file picker, 8MB cap, mobile camera capture, JPG/PNG/WEBP, URL fallback toggle
+  - Customer milestone celebration: previous-stamps tracked in sessionStorage, toast + haptic vibrate on transition to 3/6/10
+  - PWA: `/manifest.json`, `/service-worker.js` (network-first nav, stale-while-revalidate assets), `InstallPrompt` banner using `beforeinstallprompt`
 
-## What's Implemented (Feb 2026)
-- [x] Hjem dashboard (hero + 2 action cards + Aktuelle Tilbud with 16:9 promo cards)
-- [x] Bestill tab (Timma iframe embed)
-- [x] Gavekort route (Timma giftcard iframe)
-- [x] Lojalitet tab (10 stamps, milestone visuals at 3/6/10, QR modal)
-- [x] Kontakt tab (clinic info card, Ring oss CTA, maps + Instagram links, embedded map)
-- [x] Hidden admin (5-tap lock icon in footer → password modal)
-- [x] Admin Scan Lojalitetskort (camera + manual modes, success animation, reset at 10/10)
-- [x] Admin Administrere Tilbud (full CRUD with image preview)
-- [x] Backend tests passing 6/6 + frontend e2e flows verified
+## Implementation Log
+### Feb 2026 — v1 MVP
+- 4-tab bottom nav (Hjem / Bestill / Lojalitet / Kontakt), Timma iframes, 10-stamp card with QR modal, 5-tap admin entry, password-protected admin with Scan + Offers CRUD
+- Testing: 6/6 backend, all critical frontend flows ✅
 
-## P0 Backlog (Next)
-- Token-verified admin API endpoints (currently password gate is frontend + login endpoint only)
-- Loyalty history view per customer
-- Push/email notifications when customer hits a milestone
+### Feb 2026 — v1.1 Production Hardening
+- ✅ Bearer JWT auth on all admin write endpoints (12-hour expiry, HS256)
+- ✅ Image upload via Emergent object storage (`/api/upload` + `/api/files/{path}`)
+- ✅ Loyalty history per customer + 3rd admin tab "Historikk" with search & detail view
+- ✅ Customer milestone celebration toasts (stamps 3 → 10%, 6 → 20%, 10 → Gratis peel)
+- ✅ PWA: manifest, service worker, install prompt, app icons (192/512 SVG)
+- Testing: 12/12 backend, 100% frontend critical flows ✅
 
-## P1 Backlog
-- PWA install / offline support
-- Image upload to object storage (replace URL paste in admin)
-- Multi-language toggle (NO/EN)
-- Booking analytics dashboard
+## Backlog
+**P0**
+- Convert FastAPI lifecycle events from `@on_event` → `lifespan` context manager
+- Cache headers on `/api/files/{path}` (immutable UUID paths)
+- Atomic stamp update via `find_one_and_update` with `stamps < 10` filter
+
+**P1**
+- Server-side push notifications (Web Push API) for milestone events
+- Multi-language toggle (NO / EN)
+- Booking & loyalty analytics dashboard in admin
+- Admin user management (multiple staff accounts, audit log)
