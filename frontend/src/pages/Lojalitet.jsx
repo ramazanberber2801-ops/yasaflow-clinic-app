@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 import QRModal from "@/components/QRModal";
 import { getDeviceId } from "@/lib/deviceId";
-import { getLoyalty } from "@/lib/api";
+import { getLoyalty, saveLoyaltyProfile } from "@/lib/api";
 
 const REWARDS = {
   3: "10%",
