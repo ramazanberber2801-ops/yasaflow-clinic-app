@@ -10,7 +10,8 @@ export default function Footer() {
         Skjønnhet i hver detalj
       </div>
       <div className="mt-4 text-[10px] text-[#9C968C]">
-        © {new Date().getFullYear()} Seldaesthetic
+        © {new Date().getFullYear()} Seldaesthetic <span aria-hidden="true">•</span>{" "}
+        <span className="text-[#B89953]">Utviklet av Yasaflow</span>
       </div>
     </footer>
   );
