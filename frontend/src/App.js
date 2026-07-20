@@ -8,6 +8,7 @@ import Lojalitet from "@/pages/Lojalitet";
 import Kontakt from "@/pages/Kontakt";
 import Gavekort from "@/pages/Gavekort";
 import Profil from "@/pages/Profil";
+import Login from "@/pages/Login";
 import Om from "@/pages/Om";
 import Admin from "@/pages/Admin";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -29,6 +30,7 @@ function App() {
             <Route path="/kontakt" element={<Kontakt />} />
             <Route path="/om" element={<Om />} />
           </Route>
+          <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
