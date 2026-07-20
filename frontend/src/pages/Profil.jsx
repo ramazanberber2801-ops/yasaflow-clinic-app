@@ -70,14 +70,14 @@ export default function Profil() {
 
             <div className="mt-6 space-y-3">
               <Link
-                to="/login"
+                to="/login?mode=login"
                 className="w-full rounded-2xl bg-[#2C2A26] text-white py-3.5 px-4 flex items-center justify-center gap-2 text-sm font-medium"
               >
                 <LogIn size={18} strokeWidth={1.6} />
                 Logg inn
               </Link>
               <Link
-                to="/login"
+                to="/login?mode=signup"
                 className="block w-full rounded-2xl bg-[#F0E9DF] text-[#2C2A26] py-3.5 px-4 text-center text-sm font-medium"
               >
                 Opprett konto
