@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import {
   CalendarCheck,
@@ -23,6 +23,8 @@ const items = [
 ];
 
 export default function BurgerMenu({ open, onOpen, onClose }) {
+  const openedAtRef = useRef(0);
+
   useEffect(() => {
     if (!open) return undefined;
 
@@ -40,11 +42,27 @@ export default function BurgerMenu({ open, onOpen, onClose }) {
     };
   }, [open, onClose]);
 
+  const handleOpen = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openedAtRef.current = Date.now();
+    onOpen();
+  };
+
+  const handleBackdropClose = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Prevent the same mobile tap that opens the menu from also closing it.
+    if (Date.now() - openedAtRef.current < 300) return;
+    onClose();
+  };
+
   return (
     <>
       <button
         type="button"
-        onClick={onOpen}
+        onClick={handleOpen}
         aria-label="Åpne meny"
         aria-expanded={open}
         className="fixed top-4 left-4 z-40 h-11 w-11 rounded-full bg-white/95 backdrop-blur-xl border border-[#EBE5DC] shadow-sm flex items-center justify-center text-[#2C2A26] no-tap-highlight"
@@ -55,14 +73,16 @@ export default function BurgerMenu({ open, onOpen, onClose }) {
 
       {open && (
         <div className="fixed inset-0 z-50" data-testid="burger-menu">
-          <button
-            type="button"
+          <div
             className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
-            onClick={onClose}
-            aria-label="Lukk meny"
+            onClick={handleBackdropClose}
+            aria-hidden="true"
           />
 
-          <aside className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-[#FBF9F5] shadow-2xl flex flex-col">
+          <aside
+            className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-[#FBF9F5] shadow-2xl flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="px-6 pt-[max(env(safe-area-inset-top),1.25rem)] pb-5 border-b border-[#EBE5DC] flex items-center justify-between">
               <div>
                 <p className="font-serif text-xl text-[#2C2A26]">Seldaesthetic</p>
