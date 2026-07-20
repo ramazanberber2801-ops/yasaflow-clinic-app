@@ -7,6 +7,8 @@ import Bestill from "@/pages/Bestill";
 import Lojalitet from "@/pages/Lojalitet";
 import Kontakt from "@/pages/Kontakt";
 import Gavekort from "@/pages/Gavekort";
+import Profil from "@/pages/Profil";
+import Om from "@/pages/Om";
 import Admin from "@/pages/Admin";
 import InstallPrompt from "@/components/InstallPrompt";
 import { registerSW } from "@/registerSW";
@@ -23,7 +25,9 @@ function App() {
             <Route path="/bestill" element={<Bestill />} />
             <Route path="/lojalitet" element={<Lojalitet />} />
             <Route path="/gavekort" element={<Gavekort />} />
+            <Route path="/profil" element={<Profil />} />
             <Route path="/kontakt" element={<Kontakt />} />
+            <Route path="/om" element={<Om />} />
           </Route>
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
