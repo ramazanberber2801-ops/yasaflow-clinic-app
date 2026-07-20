@@ -1,13 +1,9 @@
-import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import AdminLoginModal from "@/components/AdminLoginModal";
-import { getAdminToken } from "@/lib/api";
 
 export default function ProtectedAdminRoute({ children }) {
   const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
-  const [hasBackendToken, setHasBackendToken] = useState(() => Boolean(getAdminToken()));
 
   if (loading) {
     return (
@@ -25,23 +21,6 @@ export default function ProtectedAdminRoute({ children }) {
 
   if (!isAdmin) {
     return <Navigate to="/profil" replace />;
-  }
-
-  sessionStorage.setItem("seld_admin", "1");
-
-  if (!hasBackendToken) {
-    return (
-      <div className="min-h-screen bg-[#F8F5F0] px-5 py-10">
-        <div className="mx-auto max-w-md rounded-3xl border border-[#EBE5DC] bg-white p-6 text-sm text-[#6B655B]">
-          Bekreft adminpassordet én gang for å bruke tilbud, historikk og skanning.
-        </div>
-        <AdminLoginModal
-          open
-          onClose={() => {}}
-          onSuccess={() => setHasBackendToken(true)}
-        />
-      </div>
-    );
   }
 
   return children;
