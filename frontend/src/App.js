@@ -11,6 +11,7 @@ import Gavekort from "@/pages/Gavekort";
 import Profil from "@/pages/Profil";
 import Login from "@/pages/Login";
 import Om from "@/pages/Om";
+import Varsler from "@/pages/Varsler";
 import Admin from "@/pages/AdminV2";
 import InstallPrompt from "@/components/InstallPrompt";
 import { registerSW } from "@/registerSW";
@@ -28,32 +29,16 @@ function App() {
             <Route path="/lojalitet" element={<Lojalitet />} />
             <Route path="/gavekort" element={<Gavekort />} />
             <Route path="/profil" element={<Profil />} />
+            <Route path="/varsler" element={<Varsler />} />
             <Route path="/kontakt" element={<Kontakt />} />
             <Route path="/om" element={<Om />} />
           </Route>
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedAdminRoute>
-                <Admin />
-              </ProtectedAdminRoute>
-            }
-          />
+          <Route path="/admin" element={<ProtectedAdminRoute><Admin /></ProtectedAdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: "#FFFFFF",
-            border: "1px solid #EBE5DC",
-            color: "#2C2A26",
-            fontFamily: "Manrope, sans-serif",
-          },
-        }}
-      />
+      <Toaster position="top-center" toastOptions={{ style: { background: "#FFFFFF", border: "1px solid #EBE5DC", color: "#2C2A26", fontFamily: "Manrope, sans-serif" } }} />
       <InstallPrompt />
     </div>
   );
