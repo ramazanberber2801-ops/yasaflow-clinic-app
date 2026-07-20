@@ -10,14 +10,28 @@ export default function Hjem() {
 
   useEffect(() => {
     let mounted = true;
+
     listOffers()
-      .then((data) => mounted && setOffers(data))
+      .then((data) => {
+        if (!mounted) return;
+
+        const normalizedOffers = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.offers)
+            ? data.offers
+            : [];
+
+        setOffers(normalizedOffers);
+      })
       .catch(() => mounted && setOffers([]))
       .finally(() => mounted && setLoading(false));
+
     return () => {
       mounted = false;
     };
   }, []);
+
+  const safeOffers = Array.isArray(offers) ? offers : [];
 
   return (
     <div data-testid="page-hjem">
@@ -91,14 +105,14 @@ export default function Hjem() {
               </div>
             ))}
           </div>
-        ) : offers.length === 0 ? (
+        ) : safeOffers.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-[#EBE5DC]/60">
             <p className="text-[#6B655B] text-sm">Ingen aktuelle tilbud akkurat nå.</p>
           </div>
         ) : (
           <div className="space-y-4" data-testid="offers-list">
-            {offers.map((o, i) => (
-              <OfferCard key={o.id} offer={o} index={i} />
+            {safeOffers.map((o, i) => (
+              <OfferCard key={o.id ?? i} offer={o} index={i} />
             ))}
           </div>
         )}
