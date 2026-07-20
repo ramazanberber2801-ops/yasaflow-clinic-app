@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Layout from "@/components/Layout";
+import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import Hjem from "@/pages/Hjem";
 import Bestill from "@/pages/Bestill";
 import Lojalitet from "@/pages/Lojalitet";
@@ -31,7 +32,14 @@ function App() {
             <Route path="/om" element={<Om />} />
           </Route>
           <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedAdminRoute>
+                <Admin />
+              </ProtectedAdminRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
