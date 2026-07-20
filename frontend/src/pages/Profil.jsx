@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, LockKeyhole, LogIn, LogOut, UserRound } from "lucide-react";
+import { Bell, ChevronRight, LockKeyhole, LogIn, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,7 @@ const benefits = [
 ];
 
 export default function Profil() {
-  const { user, loading, signOut } = useAuth();
+  const { user, profile, isAdmin, loading, signOut } = useAuth();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -31,8 +31,8 @@ export default function Profil() {
     );
   }
 
-  const fullName = user?.user_metadata?.full_name || "Kunde";
-  const phone = user?.user_metadata?.phone || "Telefonnummer er ikke registrert";
+  const fullName = profile?.full_name || user?.user_metadata?.full_name || "Kunde";
+  const phone = profile?.phone || user?.user_metadata?.phone || "Telefonnummer er ikke registrert";
 
   return (
     <div className="px-5 pt-24 pb-8" data-testid="page-profil">
@@ -45,18 +45,37 @@ export default function Profil() {
         {user ? (
           <>
             <div className="mt-4 rounded-2xl bg-[#F8F5F0] p-4">
-              <p className="font-medium text-[#2C2A26]">{fullName}</p>
-              <p className="mt-1 text-sm text-[#6B655B]">{user.email}</p>
-              <p className="mt-1 text-sm text-[#6B655B]">{phone}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-[#2C2A26]">{fullName}</p>
+                  <p className="mt-1 text-sm text-[#6B655B]">{user.email}</p>
+                  <p className="mt-1 text-sm text-[#6B655B]">{phone}</p>
+                </div>
+                {isAdmin && (
+                  <span className="rounded-full bg-[#EAE2D5] px-3 py-1 text-xs font-medium text-[#7A6135]">
+                    Admin
+                  </span>
+                )}
+              </div>
               <p className="mt-2 text-xs text-[#8A8378]">
                 {user.email_confirmed_at ? "E-post er bekreftet" : "E-post venter på bekreftelse"}
               </p>
             </div>
 
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B89953] px-4 py-3.5 text-sm font-medium text-white"
+              >
+                <ShieldCheck size={18} strokeWidth={1.6} />
+                Åpne adminpanelet
+              </Link>
+            )}
+
             <button
               type="button"
               onClick={handleSignOut}
-              className="mt-5 w-full rounded-2xl bg-[#2C2A26] text-white py-3.5 px-4 flex items-center justify-center gap-2 text-sm font-medium"
+              className="mt-4 w-full rounded-2xl bg-[#2C2A26] text-white py-3.5 px-4 flex items-center justify-center gap-2 text-sm font-medium"
             >
               <LogOut size={18} strokeWidth={1.6} />
               Logg ut
