@@ -1,54 +1,54 @@
-/* global firebase */
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
+const CACHE_NAME = "seldaesthetic-push-v1";
 
-const params = new URL(self.location.href).searchParams;
-const firebaseConfig = {
-  apiKey: params.get("apiKey"),
-  authDomain: params.get("authDomain"),
-  projectId: params.get("projectId"),
-  storageBucket: params.get("storageBucket"),
-  messagingSenderId: params.get("messagingSenderId"),
-  appId: params.get("appId"),
-};
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names.filter((name) => name.startsWith("seldaesthetic-push-") && name !== CACHE_NAME).map((name) => caches.delete(name)));
+    await self.clients.claim();
+  })());
+});
 
-const showPushNotification = (payload = {}) => {
-  const data = payload.data || {};
-  const notification = payload.notification || {};
-  const title = data.title || notification.title || "Seldaesthetic";
-  const body = data.body || data.message || notification.body || "Du har fått et nytt varsel";
-  const url = data.url || "/varsler";
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data?.text() || "Du har fått et nytt varsel" };
+  }
 
-  return self.registration.showNotification(title, {
-    body,
+  const title = data.title || "Seldaesthetic";
+  const messageId = data.message_id || null;
+  const targetUrl = data.url || "/varsler";
+
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || data.message || "Du har fått et nytt varsel",
     icon: "/logo192.png",
     badge: "/logo192.png",
     vibrate: [250, 120, 250],
-    requireInteraction: false,
+    tag: messageId ? `seldaesthetic-${messageId}` : `seldaesthetic-${Date.now()}`,
     renotify: true,
-    tag: `seldaesthetic-${Date.now()}`,
-    data: { url },
-  });
-};
-
-if (firebaseConfig.apiKey && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
-  messaging.onBackgroundMessage((payload) => showPushNotification(payload));
-}
+    data: { url: targetUrl, message_id: messageId },
+  }));
+});
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/varsler";
-  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
-    const existing = windows.find((client) => "focus" in client);
-    if (existing) {
-      existing.navigate(target);
-      return existing.focus();
+  const target = new URL(event.notification.data?.url || "/varsler", self.location.origin).href;
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("navigate" in client) await client.navigate(target);
+      if ("focus" in client) return client.focus();
     }
     return self.clients.openWindow(target);
-  }));
+  })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
