@@ -40,18 +40,6 @@ if (firebaseConfig.apiKey && !firebase.apps.length) {
   messaging.onBackgroundMessage((payload) => showPushNotification(payload));
 }
 
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-  try {
-    const payload = event.data.json();
-    if (payload?.data?.title || payload?.notification?.title) {
-      event.waitUntil(showPushNotification(payload));
-    }
-  } catch (error) {
-    console.warn("Kunne ikke lese push-melding:", error);
-  }
-});
-
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = event.notification.data?.url || "/varsler";
