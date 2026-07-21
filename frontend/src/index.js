@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/index.css";
 import App from "@/App";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { firebaseConfig } from "@/lib/pushNotifications";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,9 +28,8 @@ root.render(
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const params = new URLSearchParams(firebaseConfig);
       const registration = await navigator.serviceWorker.register(
-        `/firebase-messaging-sw.js?${params.toString()}`,
+        "/firebase-messaging-sw.js",
         { updateViaCache: "none" },
       );
       await registration.update();
