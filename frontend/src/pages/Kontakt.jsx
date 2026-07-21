@@ -21,9 +21,7 @@ export default function Kontakt() {
       <div className="px-5 mt-6 space-y-4">
         <div className="bg-white rounded-3xl p-6 border border-[#EBE5DC]/60 shadow-[0_4px_24px_rgba(44,42,38,0.05)]">
           <div className="flex flex-col items-center text-center pb-5 border-b border-[#EBE5DC]">
-            <div className="w-16 h-16 rounded-full bg-[#F4ECD8] flex items-center justify-center mb-3">
-              <span className="font-serif-display text-3xl text-[#B89953] -mt-0.5">{settings.clinic_name.charAt(0) || "S"}</span>
-            </div>
+            <BrandMonogram />
             <h2 className="font-serif-display text-3xl text-[#2C2A26]">{settings.clinic_name}</h2>
             <div className="flex items-center gap-3 mt-2">
               <span className="h-px w-5 bg-[#C5A059]/60" />
@@ -53,6 +51,19 @@ export default function Kontakt() {
           <iframe title={`${settings.clinic_name} kart`} src={`https://www.google.com/maps?q=${mapsQuery}&output=embed`} style={{ width: "100%", height: "240px", border: "none" }} loading="lazy" data-testid="contact-map-iframe" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function BrandMonogram() {
+  return (
+    <div className="w-20 h-20 mb-3" aria-label="Seldaesthetic-logo" role="img">
+      <svg viewBox="0 0 160 160" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision">
+        <circle cx="80" cy="80" r="74" fill="#FBF7EF" stroke="#C5A059" strokeWidth="2.5" />
+        <text x="48" y="78" fill="#B89953" fontFamily="Georgia, 'Times New Roman', serif" fontSize="64" fontWeight="400" textAnchor="middle">S</text>
+        <text x="112" y="126" fill="#B89953" fontFamily="Georgia, 'Times New Roman', serif" fontSize="64" fontWeight="400" textAnchor="middle">E</text>
+        <line x1="46" y1="128" x2="116" y2="30" stroke="#B89953" strokeWidth="8" strokeLinecap="square" />
+      </svg>
     </div>
   );
 }
