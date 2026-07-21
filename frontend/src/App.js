@@ -14,9 +14,7 @@ import Om from "@/pages/Om";
 import Varsler from "@/pages/Varsler";
 import Admin from "@/pages/AdminV2";
 import InstallPrompt from "@/components/InstallPrompt";
-import { registerSW } from "@/registerSW";
-
-registerSW();
+import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 
 function App() {
   return (
@@ -40,6 +38,7 @@ function App() {
       </BrowserRouter>
       <Toaster position="top-center" toastOptions={{ style: { background: "#FFFFFF", border: "1px solid #EBE5DC", color: "#2C2A26", fontFamily: "Manrope, sans-serif" } }} />
       <InstallPrompt />
+      <PushPermissionPrompt />
     </div>
   );
 }
