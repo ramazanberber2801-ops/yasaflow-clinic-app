@@ -27,7 +27,7 @@ export default function BurgerMenu({ open, onOpen, onClose }) {
     { to: "/bestill", label: "Bestill time", icon: CalendarCheck },
     { to: "/lojalitet", label: "Lojalitetskort", icon: Heart },
     { to: "/gavekort", label: "Gavekort", icon: Gift },
-    ...(user ? [{ to: "/varsler", label: "Varsler", icon: Bell }] : []),
+    { to: "/varsler", label: "Varsler og tilbud", icon: Bell },
     { to: "/profil", label: profileLabel, icon: UserRound },
     { to: "/kontakt", label: "Kontakt", icon: MapPin },
     { to: "/om", label: "Om Seldaesthetic", icon: Info },
