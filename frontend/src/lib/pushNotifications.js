@@ -19,6 +19,14 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
+function sameApplicationServerKey(subscription, expectedKey) {
+  const current = subscription?.options?.applicationServerKey;
+  if (!current) return false;
+  const currentBytes = new Uint8Array(current);
+  if (currentBytes.length !== expectedKey.length) return false;
+  return currentBytes.every((value, index) => value === expectedKey[index]);
+}
+
 async function getPublicKey() {
   const { data, error } = await supabase.rpc("get_web_push_public_key");
   if (error) throw error;
@@ -45,12 +53,21 @@ export async function registerPushNotifications(_userId = null, { requestPermiss
   if (Notification.permission !== "granted") return null;
 
   const registration = await getServiceWorkerRegistration();
-  const existing = await registration.pushManager.getSubscription();
   const publicKey = await getPublicKey();
-  const subscription = existing || await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  });
+  const applicationServerKey = urlBase64ToUint8Array(publicKey);
+  let subscription = await registration.pushManager.getSubscription();
+
+  if (subscription && !sameApplicationServerKey(subscription, applicationServerKey)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    });
+  }
 
   const json = subscription.toJSON();
   const { error } = await supabase.rpc("register_web_push_subscription", {
