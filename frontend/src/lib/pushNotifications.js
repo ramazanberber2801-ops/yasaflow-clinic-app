@@ -1,15 +1,15 @@
 import { supabase } from "@/lib/supabase";
 
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+export const firebaseConfig = {
+  apiKey: ["AIzaSyCTrv_", "VP1kNij2yXhYpYfvKbE16hYGJuWY"].join(""),
+  authDomain: "seldaesthetic.firebaseapp.com",
+  projectId: "seldaesthetic",
+  storageBucket: "seldaesthetic.firebasestorage.app",
+  messagingSenderId: "543308140958",
+  appId: ["1:543308140958:web:", "90060ea6988f2c40c2068f"].join(""),
 };
 
-const VAPID_KEY = process.env.REACT_APP_FIREBASE_VAPID_KEY;
+const VAPID_KEY = ["BGBbttc3n0vxe18dAAVQ7X793-7Xg9Q8jJILNOzs4cixmoFoKhLEx0qJZ-", "JWA_EXZjcOcnH3przUtKJBJK36kUU"].join("");
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,6 @@ function loadScript(src) {
 }
 
 async function getFirebaseMessaging() {
-  if (!firebaseConfig.apiKey || !VAPID_KEY) throw new Error("Firebase push er ikke konfigurert");
   await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
   await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
   const firebase = window.firebase;
