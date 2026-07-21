@@ -10,9 +10,9 @@ export default function PushPermissionPrompt() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user || !("Notification" in window)) return;
+    if (!("Notification" in window)) return;
     if (Notification.permission === "granted") {
-      registerPushNotifications(user.id).catch((error) => console.warn("Push token refresh failed:", error));
+      registerPushNotifications(user?.id || null).catch((error) => console.warn("Push token refresh failed:", error));
       return;
     }
     if (Notification.permission === "default" && localStorage.getItem("push-prompt-dismissed") !== "1") {
@@ -21,18 +21,19 @@ export default function PushPermissionPrompt() {
     }
   }, [user]);
 
-  if (!visible || !user) return null;
+  if (!visible) return null;
 
   const enable = async () => {
     setBusy(true);
     try {
-      const token = await enablePushNotifications(user.id);
+      const token = await enablePushNotifications(user?.id || null);
       if (!token) {
-        toast.error("Varsler ble ikke aktivert");
+        toast.error("Varsler ble ikke aktivert. Kontroller varslingsinnstillingene på telefonen.");
         return;
       }
       setVisible(false);
-      toast.success("Push-varsler er aktivert");
+      localStorage.removeItem("push-prompt-dismissed");
+      toast.success(user ? "Push-varsler er aktivert" : "Tilbud og nyheter er aktivert");
     } catch (error) {
       toast.error(error.message || "Kunne ikke aktivere push-varsler");
     } finally {
@@ -56,11 +57,13 @@ export default function PushPermissionPrompt() {
         </div>
         <div>
           <h3 className="font-serif text-xl text-[#2C2A26]">Få varsler fra Seldaesthetic</h3>
-          <p className="mt-1 text-sm leading-5 text-[#6B655B]">Få tilbud, nyheter og belønninger direkte på telefonen.</p>
+          <p className="mt-1 text-sm leading-5 text-[#6B655B]">
+            {user ? "Få tilbud, nyheter og personlige belønninger direkte på telefonen." : "Få tilbud og nyheter direkte på telefonen. Du trenger ikke å opprette konto."}
+          </p>
         </div>
       </div>
       <button type="button" disabled={busy} onClick={enable} className="mt-4 w-full rounded-2xl bg-[#B89953] px-4 py-3.5 text-sm font-medium text-white disabled:opacity-60">
-        {busy ? "Aktiverer …" : "Aktiver push-varsler"}
+        {busy ? "Aktiverer …" : "Slå på varsler"}
       </button>
     </div>
   );
