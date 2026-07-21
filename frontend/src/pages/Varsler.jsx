@@ -106,9 +106,9 @@ export default function Varsler() {
                 aria-label={pushEnabled ? "Slå av varsler" : "Slå på varsler"}
                 disabled={pushBusy}
                 onClick={togglePush}
-                className={`relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-60 ${pushEnabled ? "bg-[#B89953]" : "bg-[#D6D1C8]"}`}
+                className={`relative h-8 w-14 shrink-0 overflow-hidden rounded-full transition-colors disabled:opacity-60 ${pushEnabled ? "bg-[#B89953]" : "bg-[#D6D1C8]"}`}
               >
-                <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-7" : "translate-x-1"}`} />
+                <span className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-6" : "translate-x-0"}`} />
               </button>
             </div>
           )}
