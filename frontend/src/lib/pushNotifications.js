@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
 const DEVICE_KEY = "seldaesthetic-push-device-id";
+const PUSH_ENABLED_KEY = "seldaesthetic-push-enabled";
 const SERVICE_WORKER_PATH = "/firebase-messaging-sw.js";
 
 function getDeviceId() {
@@ -42,8 +43,21 @@ async function getServiceWorkerRegistration() {
   return registration;
 }
 
+export function hasUserDisabledPushNotifications() {
+  return localStorage.getItem(PUSH_ENABLED_KEY) === "0";
+}
+
+export async function isPushNotificationsEnabled() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return false;
+  if (Notification.permission !== "granted" || hasUserDisabledPushNotifications()) return false;
+  const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PATH);
+  const subscription = await registration?.pushManager.getSubscription();
+  return Boolean(subscription);
+}
+
 export async function registerPushNotifications(_userId = null, { requestPermission = false } = {}) {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return null;
+  if (!requestPermission && hasUserDisabledPushNotifications()) return null;
   if (Notification.permission === "denied") return null;
 
   if (requestPermission && Notification.permission === "default") {
@@ -81,14 +95,18 @@ export async function registerPushNotifications(_userId = null, { requestPermiss
     p_notifications_loyalty: true,
   });
   if (error) throw error;
+  localStorage.setItem(PUSH_ENABLED_KEY, "1");
   return subscription;
 }
 
 export async function enablePushNotifications(userId = null) {
+  localStorage.removeItem(PUSH_ENABLED_KEY);
   return registerPushNotifications(userId, { requestPermission: true });
 }
 
 export async function disablePushNotifications() {
+  localStorage.setItem(PUSH_ENABLED_KEY, "0");
+
   if ("serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PATH);
     const subscription = await registration?.pushManager.getSubscription();
