@@ -12,31 +12,55 @@ const firebaseConfig = {
   appId: params.get("appId"),
 };
 
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+const showPushNotification = (payload = {}) => {
+  const data = payload.data || {};
+  const notification = payload.notification || {};
+  const title = data.title || notification.title || "Seldaesthetic";
+  const body = data.body || data.message || notification.body || "Du har fått et nytt varsel";
+  const url = data.url || "/varsler";
+
+  return self.registration.showNotification(title, {
+    body,
+    icon: "/logo192.png",
+    badge: "/logo192.png",
+    vibrate: [250, 120, 250],
+    requireInteraction: false,
+    renotify: true,
+    tag: `seldaesthetic-${Date.now()}`,
+    data: { url },
+  });
+};
+
 if (firebaseConfig.apiKey && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
   const messaging = firebase.messaging();
-  messaging.onBackgroundMessage((payload) => {
-    const title = payload.notification?.title || payload.data?.title || "Seldaesthetic";
-    const options = {
-      body: payload.notification?.body || payload.data?.body || "Du har fått et nytt varsel",
-      icon: payload.notification?.icon || "/logo192.png",
-      badge: "/logo192.png",
-      data: { url: payload.data?.url || "/varsler" },
-      vibrate: [200, 100, 200],
-    };
-    self.registration.showNotification(title, options);
-  });
+  messaging.onBackgroundMessage((payload) => showPushNotification(payload));
 }
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  try {
+    const payload = event.data.json();
+    if (payload?.data?.title || payload?.notification?.title) {
+      event.waitUntil(showPushNotification(payload));
+    }
+  } catch (error) {
+    console.warn("Kunne ikke lese push-melding:", error);
+  }
+});
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = event.notification.data?.url || "/varsler";
-  event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
     const existing = windows.find((client) => "focus" in client);
     if (existing) {
       existing.navigate(target);
       return existing.focus();
     }
-    return clients.openWindow(target);
+    return self.clients.openWindow(target);
   }));
 });
