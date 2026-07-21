@@ -1,17 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
-export const firebaseConfig = {
-  apiKey: ["AIzaSyCTrv_", "VP1kNij2yXhYpYfvKbE16hYGJuWY"].join(""),
-  authDomain: "seldaesthetic.firebaseapp.com",
-  projectId: "seldaesthetic",
-  storageBucket: "seldaesthetic.firebasestorage.app",
-  messagingSenderId: "543308140958",
-  appId: ["1:543308140958:web:", "90060ea6988f2c40c2068f"].join(""),
-};
-
-const VAPID_KEY = ["BGBbttc3n0vxe18dAAVQ7X793-7Xg9Q8jJILNOzs4cixmoFoKhLEx0qJZ-", "JWA_EXZjcOcnH3przUtKJBJK36kUU"].join("");
 const DEVICE_KEY = "seldaesthetic-push-device-id";
-let foregroundListenerAttached = false;
+const SERVICE_WORKER_PATH = "/firebase-messaging-sw.js";
 
 function getDeviceId() {
   let id = localStorage.getItem(DEVICE_KEY);
@@ -22,80 +12,59 @@ function getDeviceId() {
   return id;
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      if (window.firebase) resolve();
-      else existing.addEventListener("load", resolve, { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
+async function getPublicKey() {
+  const { data, error } = await supabase.rpc("get_web_push_public_key");
+  if (error) throw error;
+  if (!data) throw new Error("Push-nøkkelen mangler");
+  return data;
+}
+
+async function getServiceWorkerRegistration() {
+  const registration = await navigator.serviceWorker.register(SERVICE_WORKER_PATH, {
+    updateViaCache: "none",
   });
+  await registration.update();
+  return registration;
 }
 
-async function getFirebaseMessaging() {
-  await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-  await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
-  const firebase = window.firebase;
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  return firebase.messaging();
-}
-
-function attachForegroundListener(messaging, registration) {
-  if (foregroundListenerAttached) return;
-  foregroundListenerAttached = true;
-
-  messaging.onMessage(async (payload) => {
-    const title = payload?.notification?.title || payload?.data?.title || "Seldaesthetic";
-    const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || "Du har fått et nytt varsel";
-    const url = payload?.data?.url || "/varsler";
-
-    try {
-      await registration.showNotification(title, {
-        body,
-        icon: "/logo192.png",
-        badge: "/logo192.png",
-        vibrate: [200, 100, 200],
-        data: { url },
-        tag: `seldaesthetic-${Date.now()}`,
-      });
-    } catch (error) {
-      console.warn("Kunne ikke vise push-varsel i forgrunnen:", error);
-    }
-  });
-}
-
-export async function registerPushNotifications(userId = null, { requestPermission = false } = {}) {
-  if (!("serviceWorker" in navigator) || !("Notification" in window)) return null;
+export async function registerPushNotifications(_userId = null, { requestPermission = false } = {}) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return null;
   if (Notification.permission === "denied") return null;
+
   if (requestPermission && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return null;
   }
   if (Notification.permission !== "granted") return null;
 
-  const registration = await navigator.serviceWorker.ready;
-  const messaging = await getFirebaseMessaging();
-  attachForegroundListener(messaging, registration);
+  const registration = await getServiceWorkerRegistration();
+  const existing = await registration.pushManager.getSubscription();
+  const publicKey = await getPublicKey();
+  const subscription = existing || await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
 
-  const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
-  if (!token) return null;
-
-  const { error } = await supabase.rpc("register_push_token", {
-    p_token: token,
+  const json = subscription.toJSON();
+  const { error } = await supabase.rpc("register_web_push_subscription", {
     p_device_id: getDeviceId(),
+    p_endpoint: subscription.endpoint,
+    p_subscription: json,
     p_platform: "web",
     p_user_agent: navigator.userAgent,
     p_notifications_offers: true,
     p_notifications_news: true,
+    p_notifications_loyalty: true,
   });
   if (error) throw error;
-  return token;
+  return subscription;
 }
 
 export async function enablePushNotifications(userId = null) {
@@ -103,8 +72,14 @@ export async function enablePushNotifications(userId = null) {
 }
 
 export async function disablePushNotifications() {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PATH);
+    const subscription = await registration?.pushManager.getSubscription();
+    if (subscription) await subscription.unsubscribe();
+  }
+
   const deviceId = localStorage.getItem(DEVICE_KEY);
   if (!deviceId) return;
-  const { error } = await supabase.rpc("disable_push_token", { p_device_id: deviceId });
+  const { error } = await supabase.rpc("disable_web_push_subscription", { p_device_id: deviceId });
   if (error) throw error;
 }
