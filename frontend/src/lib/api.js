@@ -31,9 +31,15 @@ const normalizeCard = (row, profile = null) => ({
   name: profile?.full_name || null,
   phone: profile?.phone || null,
   email: profile?.email || null,
+  birth_date: profile?.birth_date || null,
+  language: profile?.language || null,
+  tags: profile?.tags || [],
+  admin_notes: profile?.admin_notes || "",
 });
 
-// Public offers still use the existing backend.
+const PROFILE_FIELDS = "id,full_name,phone,birth_date,language,tags,admin_notes,created_at,updated_at";
+
+// Offers still use the existing backend.
 export const listOffers = () => api.get("/offers").then((r) => r.data);
 export const createOffer = (data) => api.post("/offers", data).then((r) => r.data);
 export const updateOffer = (id, data) => api.put(`/offers/${id}`, data).then((r) => r.data);
@@ -63,11 +69,12 @@ export const getLoyalty = async (userId) => {
     .eq("user_id", userId)
     .single();
   throwIfError(error);
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name,phone")
+    .select(PROFILE_FIELDS)
     .eq("id", userId)
     .maybeSingle();
+  throwIfError(profileError);
   return normalizeCard(row, profile);
 };
 
@@ -87,24 +94,64 @@ export const saveLoyaltyProfile = async (_userId, name, phone) => {
   return { name, phone };
 };
 
-export const listLoyalty = async () => {
-  const [{ data: cards, error }, { data: profiles, error: profilesError }] = await Promise.all([
-    supabase.from("loyalty_cards").select("*").order("updated_at", { ascending: false }),
-    supabase.from("profiles").select("id,full_name,phone"),
+export const listCustomers = async () => {
+  const [{ data: profiles, error }, { data: cards, error: cardsError }] = await Promise.all([
+    supabase.from("profiles").select(PROFILE_FIELDS).eq("role", "customer").order("created_at", { ascending: false }),
+    supabase.from("loyalty_cards").select("*"),
   ]);
   throwIfError(error);
-  throwIfError(profilesError);
-  const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-  return (cards || []).map((card) => normalizeCard(card, profileMap.get(card.user_id)));
+  throwIfError(cardsError);
+  const cardMap = new Map((cards || []).map((card) => [card.user_id, card]));
+  return (profiles || []).map((profile) => normalizeCard(
+    cardMap.get(profile.id) || {
+      user_id: profile.id,
+      stamps: 0,
+      total_completed: 0,
+      created_at: profile.created_at,
+    },
+    profile,
+  ));
 };
 
+export const updateCustomer = async (userId, updates) => {
+  const payload = {
+    full_name: updates.name?.trim() || null,
+    phone: updates.phone?.trim() || null,
+    birth_date: updates.birth_date || null,
+    language: updates.language || null,
+    tags: Array.isArray(updates.tags) ? updates.tags : [],
+    admin_notes: updates.admin_notes?.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId)
+    .select(PROFILE_FIELDS)
+    .single();
+  throwIfError(error);
+  return data;
+};
+
+export const listLoyalty = listCustomers;
+
 const changeStamp = async (userId, type) => {
-  const { data: current, error } = await supabase
+  let { data: current, error } = await supabase
     .from("loyalty_cards")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   throwIfError(error);
+
+  if (!current) {
+    const { data: created, error: createError } = await supabase
+      .from("loyalty_cards")
+      .insert({ user_id: userId, stamps: 0, total_completed: 0 })
+      .select("*")
+      .single();
+    throwIfError(createError);
+    current = created;
+  }
 
   let stamps = current.stamps || 0;
   let totalCompleted = current.total_completed || 0;
@@ -172,18 +219,31 @@ export const listNotifications = async () => {
   throwIfError(error);
   return data || [];
 };
+
 export const createNotification = async (payload) => {
   const { data: sessionData } = await supabase.auth.getSession();
-  const { data, error } = await supabase.from("notifications").insert({
+  const createdBy = sessionData.session?.user?.id || null;
+  const targetIds = Array.isArray(payload.target_user_ids)
+    ? [...new Set(payload.target_user_ids.filter(Boolean))]
+    : payload.target_user_id
+      ? [payload.target_user_id]
+      : [];
+
+  const base = {
     title: payload.title,
     message: payload.message,
     category: payload.category || "news",
-    target_user_id: payload.target_user_id || null,
-    created_by: sessionData.session?.user?.id || null,
-  }).select("*").single();
+    created_by: createdBy,
+  };
+  const rows = targetIds.length
+    ? targetIds.map((targetUserId) => ({ ...base, target_user_id: targetUserId }))
+    : [{ ...base, target_user_id: null }];
+
+  const { data, error } = await supabase.from("notifications").insert(rows).select("*");
   throwIfError(error);
-  return data;
+  return data || [];
 };
+
 export const markNotificationRead = async (notificationId) => {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user?.id;
