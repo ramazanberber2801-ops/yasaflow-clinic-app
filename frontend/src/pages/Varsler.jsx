@@ -3,7 +3,11 @@ import { Bell, CheckCheck } from "lucide-react";
 import Header from "@/components/Header";
 import { listNotifications, markNotificationRead } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { enablePushNotifications, registerPushNotifications } from "@/lib/pushNotifications";
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  isPushNotificationsEnabled,
+} from "@/lib/pushNotifications";
 import { toast } from "sonner";
 
 const NOTIFICATION_LIFETIME_MS = 48 * 60 * 60 * 1000;
@@ -13,6 +17,7 @@ export default function Varsler() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [permission, setPermission] = useState(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
 
   useEffect(() => {
@@ -35,20 +40,32 @@ export default function Varsler() {
   }, [authLoading, user, profile]);
 
   useEffect(() => {
-    if (permission === "granted") {
-      registerPushNotifications(user?.id || null).catch(() => {});
-    }
-  }, [permission, user]);
+    let active = true;
+    isPushNotificationsEnabled()
+      .then((enabled) => { if (active) setPushEnabled(enabled); })
+      .catch(() => { if (active) setPushEnabled(false); });
+    return () => { active = false; };
+  }, []);
 
-  const enablePush = async () => {
+  const togglePush = async () => {
     setPushBusy(true);
     try {
-      const token = await enablePushNotifications(user?.id || null);
-      setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
-      if (!token) return toast.error("Varsler ble ikke aktivert på telefonen");
-      toast.success(user ? "Varsler er slått på" : "Tilbud og nyheter er slått på");
+      if (pushEnabled) {
+        await disablePushNotifications();
+        setPushEnabled(false);
+        toast.success("Varsler er slått av");
+      } else {
+        const subscription = await enablePushNotifications(user?.id || null);
+        setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
+        if (!subscription) {
+          toast.error("Varsler ble ikke aktivert på telefonen");
+          return;
+        }
+        setPushEnabled(true);
+        toast.success(user ? "Varsler er slått på" : "Tilbud og nyheter er slått på");
+      }
     } catch (error) {
-      toast.error(error.message || "Kunne ikke aktivere varsler");
+      toast.error(error.message || "Kunne ikke endre varslingsinnstillingen");
     } finally {
       setPushBusy(false);
     }
@@ -71,17 +88,31 @@ export default function Varsler() {
         <div className="rounded-3xl border border-[#EBE5DC] bg-white p-5 shadow-sm">
           <h2 className="font-serif-display text-xl text-[#2C2A26]">Få tilbud direkte på telefonen</h2>
           <p className="mt-2 text-sm leading-6 text-[#6B655B]">Du kan motta tilbud og nyheter uten å registrere konto.</p>
-          {permission === "granted" ? (
-            <div className="mt-4 rounded-2xl bg-[#EEF5EA] px-4 py-3 text-sm text-[#4E6B42]">Varsler er slått på</div>
-          ) : permission === "denied" ? (
+
+          {permission === "denied" ? (
             <div className="mt-4 rounded-2xl bg-[#F8EAEA] px-4 py-3 text-sm text-[#8E4545]">Varsler er blokkert i telefonens nettleserinnstillinger.</div>
           ) : permission === "unsupported" ? (
             <div className="mt-4 rounded-2xl bg-[#F4F0EA] px-4 py-3 text-sm text-[#6B655B]">Denne nettleseren støtter ikke push-varsler.</div>
           ) : (
-            <button type="button" disabled={pushBusy} onClick={enablePush} className="mt-4 w-full rounded-2xl bg-[#B89953] px-4 py-3.5 text-sm font-medium text-white disabled:opacity-60">
-              {pushBusy ? "Aktiverer …" : "Slå på varsler"}
-            </button>
+            <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[#F7F3EC] px-4 py-4">
+              <div>
+                <div className="text-sm font-medium text-[#2C2A26]">Varsler</div>
+                <div className="mt-1 text-xs text-[#6B655B]">{pushEnabled ? "Varsler er slått på" : "Varsler er slått av"}</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pushEnabled}
+                aria-label={pushEnabled ? "Slå av varsler" : "Slå på varsler"}
+                disabled={pushBusy}
+                onClick={togglePush}
+                className={`relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-60 ${pushEnabled ? "bg-[#B89953]" : "bg-[#D6D1C8]"}`}
+              >
+                <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${pushEnabled ? "translate-x-7" : "translate-x-1"}`} />
+              </button>
+            </div>
           )}
+          <p className="mt-3 text-xs text-[#9C968C]">Du kan når som helst slå varsler av eller på.</p>
         </div>
 
         {authLoading || loading ? (
