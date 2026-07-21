@@ -16,6 +16,7 @@ import Admin from "@/pages/AdminHub";
 import AdminSettings from "@/pages/AdminSettings";
 import AdminNotifications from "@/pages/AdminNotifications";
 import AdminLoyaltyCampaigns from "@/pages/AdminLoyaltyCampaigns";
+import AdminAppInstall from "@/pages/AdminAppInstall";
 import InstallPrompt from "@/components/InstallPrompt";
 import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 
@@ -39,6 +40,7 @@ function App() {
           <Route path="/admin/settings" element={<ProtectedAdminRoute><AdminSettings /></ProtectedAdminRoute>} />
           <Route path="/admin/notifications" element={<ProtectedAdminRoute><AdminNotifications /></ProtectedAdminRoute>} />
           <Route path="/admin/loyalty-campaigns" element={<ProtectedAdminRoute><AdminLoyaltyCampaigns /></ProtectedAdminRoute>} />
+          <Route path="/admin/app-install" element={<ProtectedAdminRoute><AdminAppInstall /></ProtectedAdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
