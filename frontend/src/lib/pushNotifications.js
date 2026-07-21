@@ -10,6 +10,16 @@ export const firebaseConfig = {
 };
 
 const VAPID_KEY = ["BGBbttc3n0vxe18dAAVQ7X793-7Xg9Q8jJILNOzs4cixmoFoKhLEx0qJZ-", "JWA_EXZjcOcnH3przUtKJBJK36kUU"].join("");
+const DEVICE_KEY = "seldaesthetic-push-device-id";
+
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_KEY);
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(DEVICE_KEY, id);
+  }
+  return id;
+}
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -35,8 +45,8 @@ async function getFirebaseMessaging() {
   return firebase.messaging();
 }
 
-export async function registerPushNotifications(userId, { requestPermission = false } = {}) {
-  if (!userId || !("serviceWorker" in navigator) || !("Notification" in window)) return null;
+export async function registerPushNotifications(userId = null, { requestPermission = false } = {}) {
+  if (!("serviceWorker" in navigator) || !("Notification" in window)) return null;
   if (Notification.permission === "denied") return null;
   if (requestPermission && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
@@ -49,17 +59,25 @@ export async function registerPushNotifications(userId, { requestPermission = fa
   const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
   if (!token) return null;
 
-  const { error } = await supabase.from("push_tokens").upsert({
-    user_id: userId,
-    token,
-    platform: "web",
-    user_agent: navigator.userAgent,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "token" });
+  const { error } = await supabase.rpc("register_push_token", {
+    p_token: token,
+    p_device_id: getDeviceId(),
+    p_platform: "web",
+    p_user_agent: navigator.userAgent,
+    p_notifications_offers: true,
+    p_notifications_news: true,
+  });
   if (error) throw error;
   return token;
 }
 
-export async function enablePushNotifications(userId) {
+export async function enablePushNotifications(userId = null) {
   return registerPushNotifications(userId, { requestPermission: true });
+}
+
+export async function disablePushNotifications() {
+  const deviceId = localStorage.getItem(DEVICE_KEY);
+  if (!deviceId) return;
+  const { error } = await supabase.rpc("disable_push_token", { p_device_id: deviceId });
+  if (error) throw error;
 }
