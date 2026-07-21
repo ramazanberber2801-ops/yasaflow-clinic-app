@@ -12,7 +12,8 @@ import Profil from "@/pages/Profil";
 import Login from "@/pages/Login";
 import Om from "@/pages/Om";
 import Varsler from "@/pages/Varsler";
-import Admin from "@/pages/AdminV2";
+import Admin from "@/pages/AdminHub";
+import AdminSettings from "@/pages/AdminSettings";
 import InstallPrompt from "@/components/InstallPrompt";
 import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 
@@ -33,6 +34,7 @@ function App() {
           </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<ProtectedAdminRoute><Admin /></ProtectedAdminRoute>} />
+          <Route path="/admin/settings" element={<ProtectedAdminRoute><AdminSettings /></ProtectedAdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
