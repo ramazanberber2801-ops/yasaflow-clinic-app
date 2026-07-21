@@ -11,7 +11,14 @@ export default function Footer() {
       </div>
       <div className="mt-4 text-[10px] text-[#9C968C]">
         © {new Date().getFullYear()} Seldaesthetic <span aria-hidden="true">•</span>{" "}
-        <span className="text-[#B89953]">Utviklet av Yasaflow</span>
+        <a
+          href="https://yasaflow.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#B89953] hover:underline"
+        >
+          Utviklet av Yasaflow
+        </a>
       </div>
     </footer>
   );
