@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Layout from "@/components/Layout";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
+import ProtectedPlatformRoute from "@/components/ProtectedPlatformRoute";
 import Hjem from "@/pages/Hjem";
 import Bestill from "@/pages/Bestill";
 import Lojalitet from "@/pages/Lojalitet";
@@ -17,6 +18,7 @@ import AdminSettings from "@/pages/AdminSettings";
 import AdminNotifications from "@/pages/AdminNotifications";
 import AdminLoyaltyCampaigns from "@/pages/AdminLoyaltyCampaigns";
 import AdminAppInstall from "@/pages/AdminAppInstall";
+import PlatformAdmin from "@/pages/PlatformAdmin";
 import InstallPrompt from "@/components/InstallPrompt";
 import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 import { useClinicSettings } from "@/contexts/ClinicSettingsContext";
@@ -51,6 +53,7 @@ function App() {
           <Route path="/admin/notifications" element={<ProtectedAdminRoute><AdminNotifications /></ProtectedAdminRoute>} />
           <Route path="/admin/loyalty-campaigns" element={<ProtectedAdminRoute><AdminLoyaltyCampaigns /></ProtectedAdminRoute>} />
           <Route path="/admin/app-install" element={<ProtectedAdminRoute><AdminAppInstall /></ProtectedAdminRoute>} />
+          <Route path="/yasaflow-admin" element={<ProtectedPlatformRoute><PlatformAdmin /></ProtectedPlatformRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
