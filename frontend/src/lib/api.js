@@ -34,7 +34,7 @@ export const createLoyaltyCampaign = async (payload) => {
   const { data, error } = await supabase.from("loyalty_campaigns").insert({ clinic_id: clinicId, name: payload.name.trim(), reward: payload.reward.trim(), stamp_goal: Number(payload.stamp_goal), status: "draft", starts_at: payload.starts_at || null, ends_at: payload.ends_at || null, created_by: sessionData.session?.user?.id || null }).select("*").single();
   throwIfError(error); return data;
 };
-export const activateLoyaltyCampaign = async (campaignId) => { const { data, error } = await supabase.rpc("activate_loyalty_campaign", { p_campaign_id: campaignId }); throwIfError(error); return data; };
+export const activateLoyaltyCampaign = async (campaignId) => { const clinicId = await getCurrentClinicId(); const { data, error } = await supabase.rpc("activate_loyalty_campaign", { p_clinic_id: clinicId, p_campaign_id: campaignId }); throwIfError(error); return data; };
 export const archiveLoyaltyCampaign = async (campaignId) => { const clinicId = await getCurrentClinicId(); const { data, error } = await supabase.from("loyalty_campaigns").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", campaignId).eq("clinic_id", clinicId).select("*").single(); throwIfError(error); return data; };
 
 export const listCampaignRewards = async (campaignId) => { if (!campaignId) return []; const clinicId = await getCurrentClinicId(); const { data, error } = await supabase.from("loyalty_rewards").select("*").eq("clinic_id", clinicId).eq("campaign_id", campaignId).order("stamps_required", { ascending: true }); throwIfError(error); return data || []; };
@@ -54,11 +54,11 @@ export const getLoyaltyRewardStatus = async (userId, cardOverride = null) => {
   ]);
   throwIfError(error); throwIfError(redemptionError); const redeemedIds = new Set((redemptions || []).map((r) => r.reward_id)); return { card, rewards: (rewards || []).map((r) => ({ ...r, achieved: card.stamps >= r.stamps_required, redeemed: redeemedIds.has(r.id) })), redemptions: redemptions || [] };
 };
-export const redeemLoyaltyReward = async (userId, rewardId) => { const { data, error } = await supabase.rpc("redeem_loyalty_reward", { p_user_id: userId, p_reward_id: rewardId }); throwIfError(error); const row = Array.isArray(data) ? data[0] : data; return normalizeCard(row); };
+export const redeemLoyaltyReward = async (userId, rewardId) => { const clinicId = await getCurrentClinicId(); const { data, error } = await supabase.rpc("redeem_loyalty_reward", { p_clinic_id: clinicId, p_user_id: userId, p_reward_id: rewardId }); throwIfError(error); const row = Array.isArray(data) ? data[0] : data; return normalizeCard(row); };
 
 export const getLoyalty = async (userId) => {
   const clinicId = await getCurrentClinicId(); const { data: sessionData } = await supabase.auth.getSession(); const currentUser = sessionData.session?.user; if (!currentUser) throw new Error("Du må være logget inn");
-  if (currentUser.id === userId) { const { data, error } = await supabase.rpc("ensure_loyalty_card"); throwIfError(error); const row = Array.isArray(data) ? data[0] : data; return normalizeCard(row, { full_name: currentUser.user_metadata?.full_name, phone: currentUser.user_metadata?.phone, email: currentUser.email }); }
+  if (currentUser.id === userId) { const { data, error } = await supabase.rpc("ensure_loyalty_card", { p_clinic_id: clinicId }); throwIfError(error); const row = Array.isArray(data) ? data[0] : data; return normalizeCard(row, { full_name: currentUser.user_metadata?.full_name, phone: currentUser.user_metadata?.phone, email: currentUser.email }); }
   const { data: row, error } = await supabase.from("loyalty_cards").select("*").eq("clinic_id", clinicId).eq("user_id", userId).single(); throwIfError(error); const { data: profile, error: profileError } = await supabase.from("profiles").select(PROFILE_FIELDS).eq("id", userId).maybeSingle(); throwIfError(profileError); return normalizeCard(row, profile);
 };
 export const saveLoyaltyProfile = async (_userId, name, phone) => { const { data: authData, error: authError } = await supabase.auth.updateUser({ data: { full_name: name, phone } }); throwIfError(authError); const user = authData.user; const { error } = await supabase.from("profiles").upsert({ id: user.id, full_name: name, phone, updated_at: new Date().toISOString() }, { onConflict: "id" }); throwIfError(error); return { name, phone }; };
