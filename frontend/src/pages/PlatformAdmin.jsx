@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Building2, ExternalLink, RefreshCw, Save } from "lucide-react";
+import { ArrowLeft, Building2, ExternalLink, Plus, RefreshCw, Save, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -12,11 +12,36 @@ const MODULES = [
   ["push_enabled", "Push-varsler"],
 ];
 
+const EMPTY_FORM = {
+  name: "",
+  slug: "",
+  primaryDomain: "",
+  ownerEmail: "",
+  status: "active",
+  booking_enabled: false,
+  gift_card_enabled: false,
+  campaigns_enabled: true,
+  loyalty_enabled: true,
+  push_enabled: true,
+};
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function PlatformAdmin() {
   const [clinics, setClinics] = useState([]);
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const load = async () => {
     setLoading(true);
@@ -69,6 +94,49 @@ export default function PlatformAdmin() {
     toast.success(`${clinic.name} er oppdatert`);
   };
 
+  const updateForm = (patch) => setForm((current) => ({ ...current, ...patch }));
+
+  const handleNameChange = (name) => {
+    setForm((current) => ({
+      ...current,
+      name,
+      slug: current.slug && current.slug !== slugify(current.name) ? current.slug : slugify(name),
+    }));
+  };
+
+  const createClinic = async (event) => {
+    event.preventDefault();
+    if (!form.name.trim() || !form.slug.trim()) {
+      toast.error("Klinikknavn og slug er påkrevd");
+      return;
+    }
+
+    setCreating(true);
+    const { data, error } = await supabase.rpc("create_clinic_onboarding", {
+      p_name: form.name.trim(),
+      p_slug: form.slug.trim(),
+      p_primary_domain: form.primaryDomain.trim() || null,
+      p_owner_email: form.ownerEmail.trim() || null,
+      p_status: form.status,
+      p_booking_enabled: form.booking_enabled,
+      p_gift_card_enabled: form.gift_card_enabled,
+      p_campaigns_enabled: form.campaigns_enabled,
+      p_loyalty_enabled: form.loyalty_enabled,
+      p_push_enabled: form.push_enabled,
+    });
+    setCreating(false);
+
+    if (error) {
+      toast.error(error.message || "Kunne ikke opprette klinikken");
+      return;
+    }
+
+    toast.success(`${data?.name || form.name} er opprettet`);
+    setForm(EMPTY_FORM);
+    setShowCreate(false);
+    await load();
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F5F0] px-4 py-6 text-[#2C2A26] sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -76,10 +144,64 @@ export default function PlatformAdmin() {
           <div>
             <Link to="/admin" className="mb-3 inline-flex items-center gap-2 text-sm text-[#756F65]"><ArrowLeft size={16} />Til klinikkadmin</Link>
             <h1 className="text-3xl font-semibold">Yasaflow Clinic plattformadmin</h1>
-            <p className="mt-1 max-w-2xl text-sm text-[#756F65]">Administrer kun klinikker som bruker Yasaflow Clinic. Denne siden er separat fra Yasaflow-plattformen for foreninger og fra yasaflow.com.</p>
+            <p className="mt-1 text-sm text-[#756F65]">Administrer kun klinikkproduktet: klinikker, domener, status og Clinic-moduler.</p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-full border border-[#DDD4C6] bg-white px-4 py-2 text-sm"><RefreshCw size={16} />Oppdater</button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setShowCreate((value) => !value)} className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-4 py-2 text-sm text-white">
+              {showCreate ? <X size={16} /> : <Plus size={16} />}{showCreate ? "Lukk" : "Ny klinikk"}
+            </button>
+            <button onClick={load} className="inline-flex items-center gap-2 rounded-full border border-[#DDD4C6] bg-white px-4 py-2 text-sm"><RefreshCw size={16} />Oppdater</button>
+          </div>
         </div>
+
+        {showCreate && (
+          <form onSubmit={createClinic} className="mb-6 rounded-3xl border border-[#DCD2FF] bg-white p-5 shadow-sm">
+            <div className="mb-5">
+              <h2 className="text-xl font-semibold">Opprett ny klinikk</h2>
+              <p className="mt-1 text-sm text-[#756F65]">Klinikken og standardinnstillingene opprettes samlet. Eier-e-post er valgfri, men brukeren må allerede ha en konto.</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Klinikknavn" required>
+                <input value={form.name} onChange={(event) => handleNameChange(event.target.value)} placeholder="Eksempelklinikken" className="field-input" />
+              </Field>
+              <Field label="Slug" required hint="Brukes som teknisk klinikkadresse">
+                <input value={form.slug} onChange={(event) => updateForm({ slug: slugify(event.target.value) })} placeholder="eksempelklinikken" className="field-input" />
+              </Field>
+              <Field label="Domene" hint="Valgfritt, uten https://">
+                <input value={form.primaryDomain} onChange={(event) => updateForm({ primaryDomain: event.target.value.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "") })} placeholder="klinikk.yasaflow.com" className="field-input" />
+              </Field>
+              <Field label="Eierens e-post" hint="Må allerede være registrert bruker">
+                <input type="email" value={form.ownerEmail} onChange={(event) => updateForm({ ownerEmail: event.target.value })} placeholder="eier@klinikk.no" className="field-input" />
+              </Field>
+              <Field label="Status">
+                <select value={form.status} onChange={(event) => updateForm({ status: event.target.value })} className="field-input">
+                  <option value="active">Aktiv</option>
+                  <option value="inactive">Inaktiv</option>
+                  <option value="suspended">Suspendert</option>
+                </select>
+              </Field>
+            </div>
+
+            <div className="mt-5">
+              <h3 className="mb-2 text-sm font-medium">Clinic-moduler</h3>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                {MODULES.map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between rounded-2xl border border-[#E5DED3] px-3 py-2 text-sm">
+                    {label}
+                    <input type="checkbox" checked={Boolean(form[key])} onChange={(event) => updateForm({ [key]: event.target.checked })} />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button type="submit" disabled={creating} className="inline-flex items-center gap-2 rounded-full bg-[#2C2A26] px-5 py-2.5 text-sm text-white disabled:opacity-50">
+                <Plus size={16} />{creating ? "Oppretter …" : "Opprett klinikk"}
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <Stat label="Klinikker" value={clinics.length} />
@@ -99,7 +221,7 @@ export default function PlatformAdmin() {
                     <div className="flex items-center gap-3">
                       <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#F3EBDD]"><Building2 size={20} /></div>
                       <div>
-                        <input value={clinic.name} onChange={(e) => patchClinic(clinic.id, { name: e.target.value })} className="w-full border-0 bg-transparent p-0 text-xl font-semibold outline-none" />
+                        <input value={clinic.name} onChange={(event) => patchClinic(clinic.id, { name: event.target.value })} className="w-full border-0 bg-transparent p-0 text-xl font-semibold outline-none" />
                         <div className="text-xs text-[#8A8379]">/{clinic.slug}</div>
                       </div>
                     </div>
@@ -109,12 +231,12 @@ export default function PlatformAdmin() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="text-sm">Domene
                       <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#E5DED3] px-3 py-2">
-                        <input value={clinic.primary_domain || ""} onChange={(e) => patchClinic(clinic.id, { primary_domain: e.target.value })} placeholder="klinikk.yasaflow.com" className="min-w-0 flex-1 bg-transparent outline-none" />
+                        <input value={clinic.primary_domain || ""} onChange={(event) => patchClinic(clinic.id, { primary_domain: event.target.value })} placeholder="klinikk.yasaflow.com" className="min-w-0 flex-1 bg-transparent outline-none" />
                         {clinic.primary_domain && <a href={`https://${clinic.primary_domain}`} target="_blank" rel="noreferrer"><ExternalLink size={16} /></a>}
                       </div>
                     </label>
                     <label className="text-sm">Status
-                      <select value={clinic.status} onChange={(e) => patchClinic(clinic.id, { status: e.target.value })} className="mt-1 w-full rounded-2xl border border-[#E5DED3] bg-white px-3 py-2 outline-none">
+                      <select value={clinic.status} onChange={(event) => patchClinic(clinic.id, { status: event.target.value })} className="mt-1 w-full rounded-2xl border border-[#E5DED3] bg-white px-3 py-2 outline-none">
                         <option value="active">Aktiv</option>
                         <option value="inactive">Inaktiv</option>
                         <option value="suspended">Suspendert</option>
@@ -128,7 +250,7 @@ export default function PlatformAdmin() {
                       {MODULES.map(([key, label]) => (
                         <label key={key} className="flex items-center justify-between rounded-2xl border border-[#E5DED3] px-3 py-2 text-sm">
                           {label}
-                          <input type="checkbox" checked={Boolean(row?.[key])} onChange={(e) => patchSettings(clinic.id, { [key]: e.target.checked })} disabled={!row} />
+                          <input type="checkbox" checked={Boolean(row?.[key])} onChange={(event) => patchSettings(clinic.id, { [key]: event.target.checked })} disabled={!row} />
                         </label>
                       ))}
                     </div>
@@ -139,7 +261,18 @@ export default function PlatformAdmin() {
           </div>
         )}
       </div>
+      <style>{`.field-input{margin-top:.25rem;width:100%;border:1px solid #E5DED3;border-radius:1rem;background:#fff;padding:.65rem .8rem;outline:none}.field-input:focus{border-color:#7C5CFC}`}</style>
     </div>
+  );
+}
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label className="text-sm">
+      <span className="font-medium">{label}{required ? " *" : ""}</span>
+      {hint && <span className="ml-2 text-xs text-[#8A8379]">{hint}</span>}
+      {children}
+    </label>
   );
 }
 
