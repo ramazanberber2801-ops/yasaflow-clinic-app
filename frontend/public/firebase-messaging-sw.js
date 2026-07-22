@@ -1,6 +1,6 @@
 const CACHE_NAME = "seldaesthetic-push-v1";
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -26,8 +26,7 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || data.message || "Du har fått et nytt varsel",
-    icon: "/logo192.png",
-    badge: "/logo192.png",
+    icon: "/icons/icon-192.svg",
     vibrate: [250, 120, 250],
     tag: messageId ? `seldaesthetic-${messageId}` : `seldaesthetic-${Date.now()}`,
     renotify: true,
