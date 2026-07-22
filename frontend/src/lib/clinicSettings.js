@@ -2,6 +2,8 @@ import { APP_CONFIG } from "@/config/appConfig";
 import { supabase } from "@/lib/supabase";
 import { getCurrentClinicId } from "@/lib/currentClinic";
 
+export const CLINIC_ASSETS_BUCKET = "clinic-assets";
+
 export const DEFAULT_CLINIC_SETTINGS = {
   id: null,
   clinic_id: null,
@@ -25,6 +27,9 @@ export const DEFAULT_CLINIC_SETTINGS = {
   about_title: "",
   about_text: "",
   about_sections: [],
+  logo_url: "",
+  about_hero_image_url: "",
+  about_secondary_image_url: "",
 };
 
 export async function getClinicSettings() {
@@ -37,6 +42,23 @@ export async function getClinicSettings() {
 
   if (error) throw error;
   return { ...DEFAULT_CLINIC_SETTINGS, clinic_id: clinicId, ...(data || {}) };
+}
+
+export async function uploadClinicAsset(file, assetKey) {
+  if (!file) throw new Error("Velg en bildefil");
+  if (!file.type?.startsWith("image/")) throw new Error("Filen må være et bilde");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Bildet kan ikke være større enn 5 MB");
+
+  const clinicId = await getCurrentClinicId();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${clinicId}/${assetKey}.${extension}`;
+  const { error } = await supabase.storage
+    .from(CLINIC_ASSETS_BUCKET)
+    .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type });
+
+  if (error) throw error;
+  const { data } = supabase.storage.from(CLINIC_ASSETS_BUCKET).getPublicUrl(path);
+  return `${data.publicUrl}?v=${Date.now()}`;
 }
 
 export async function updateClinicSettings(values) {
@@ -74,6 +96,9 @@ export async function updateClinicSettings(values) {
     about_title: text(values.about_title),
     about_text: text(values.about_text),
     about_sections: sections,
+    logo_url: text(values.logo_url),
+    about_hero_image_url: text(values.about_hero_image_url),
+    about_secondary_image_url: text(values.about_secondary_image_url),
     updated_at: new Date().toISOString(),
     updated_by: sessionData.session?.user?.id || null,
   };
