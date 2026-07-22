@@ -75,8 +75,8 @@ export default function PlatformAdmin() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link to="/admin" className="mb-3 inline-flex items-center gap-2 text-sm text-[#756F65]"><ArrowLeft size={16} />Til klinikkadmin</Link>
-            <h1 className="text-3xl font-semibold">Yasaflow Admin</h1>
-            <p className="mt-1 text-sm text-[#756F65]">Administrer klinikker, domener, status og moduler.</p>
+            <h1 className="text-3xl font-semibold">Yasaflow Clinic plattformadmin</h1>
+            <p className="mt-1 max-w-2xl text-sm text-[#756F65]">Administrer kun klinikker som bruker Yasaflow Clinic. Denne siden er separat fra Yasaflow-plattformen for foreninger og fra yasaflow.com.</p>
           </div>
           <button onClick={load} className="inline-flex items-center gap-2 rounded-full border border-[#DDD4C6] bg-white px-4 py-2 text-sm"><RefreshCw size={16} />Oppdater</button>
         </div>
@@ -123,7 +123,7 @@ export default function PlatformAdmin() {
                   </div>
 
                   <div className="mt-5">
-                    <h2 className="mb-2 text-sm font-medium">Moduler</h2>
+                    <h2 className="mb-2 text-sm font-medium">Clinic-moduler</h2>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       {MODULES.map(([key, label]) => (
                         <label key={key} className="flex items-center justify-between rounded-2xl border border-[#E5DED3] px-3 py-2 text-sm">
