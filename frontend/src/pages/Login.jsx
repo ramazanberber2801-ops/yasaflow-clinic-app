@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { PASSWORD_REQUIREMENTS_TEXT, validatePassword } from "@/lib/passwordPolicy";
 
 const PRODUCTION_URL = "https://seldaesthetic-app.vercel.app";
 const AUTH_REDIRECT_URL = `${PRODUCTION_URL}/profil`;
@@ -21,6 +22,15 @@ export default function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (mode === "signup") {
+      const passwordError = validatePassword(form.password);
+      if (passwordError) {
+        toast.error(passwordError);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -120,11 +130,15 @@ export default function Login() {
             </Field>
 
             <Field icon={LockKeyhole} label="Passord">
-              <input required minLength={6} type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={form.password} onChange={updateField("password")} className="w-full bg-transparent text-sm outline-none" placeholder="Minst 6 tegn" />
+              <input required minLength={6} type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={form.password} onChange={updateField("password")} className="w-full bg-transparent text-sm outline-none" placeholder={mode === "signup" ? PASSWORD_REQUIREMENTS_TEXT : "Passord"} />
               <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Skjul passord" : "Vis passord"}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </Field>
+
+            {mode === "signup" && (
+              <p className="text-xs leading-5 text-[#8A8378]">{PASSWORD_REQUIREMENTS_TEXT}.</p>
+            )}
 
             {mode === "login" && (
               <button type="button" onClick={handleForgotPassword} className="text-sm font-medium text-[#9A7B3F]">
