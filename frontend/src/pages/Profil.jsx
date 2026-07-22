@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { PASSWORD_REQUIREMENTS_TEXT, validatePassword } from "@/lib/passwordPolicy";
 import { supabase } from "@/lib/supabase";
 
 const benefits = [
@@ -93,8 +94,9 @@ export default function Profil() {
   };
 
   const changePassword = async () => {
-    if (passwords.password.length < 6) {
-      toast.error("Passordet må ha minst 6 tegn");
+    const passwordError = validatePassword(passwords.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
     if (passwords.password !== passwords.confirm) {
@@ -279,16 +281,19 @@ export default function Profil() {
               <Field label="Nytt passord">
                 <input
                   type="password"
+                  minLength={6}
                   value={passwords.password}
                   onChange={(event) => setPasswords((current) => ({ ...current, password: event.target.value }))}
                   className="w-full rounded-2xl border border-[#DED7CC] bg-white px-4 py-3 text-sm outline-none focus:border-[#B89953]"
                   autoComplete="new-password"
-                  placeholder="Minst 6 tegn"
+                  placeholder={PASSWORD_REQUIREMENTS_TEXT}
                 />
               </Field>
+              <p className="text-xs leading-5 text-[#8A8378]">{PASSWORD_REQUIREMENTS_TEXT}.</p>
               <Field label="Gjenta nytt passord">
                 <input
                   type="password"
+                  minLength={6}
                   value={passwords.confirm}
                   onChange={(event) => setPasswords((current) => ({ ...current, confirm: event.target.value }))}
                   className="w-full rounded-2xl border border-[#DED7CC] bg-white px-4 py-3 text-sm outline-none focus:border-[#B89953]"
