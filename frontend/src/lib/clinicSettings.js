@@ -1,7 +1,9 @@
 import { supabase } from "@/lib/supabase";
+import { getCurrentClinicId } from "@/lib/currentClinic";
 
 export const DEFAULT_CLINIC_SETTINGS = {
   id: "main",
+  clinic_id: null,
   clinic_name: "",
   subtitle: "",
   address: "",
@@ -25,18 +27,22 @@ export const DEFAULT_CLINIC_SETTINGS = {
 };
 
 export async function getClinicSettings() {
+  const clinicId = await getCurrentClinicId();
   const { data, error } = await supabase
     .from("clinic_settings")
     .select("*")
-    .eq("id", "main")
+    .eq("clinic_id", clinicId)
     .maybeSingle();
 
   if (error) throw error;
-  return { ...DEFAULT_CLINIC_SETTINGS, ...(data || {}) };
+  return { ...DEFAULT_CLINIC_SETTINGS, clinic_id: clinicId, ...(data || {}) };
 }
 
 export async function updateClinicSettings(values) {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const [{ data: sessionData }, clinicId] = await Promise.all([
+    supabase.auth.getSession(),
+    getCurrentClinicId(),
+  ]);
   const text = (value) => (value || "").trim();
   const sections = Array.isArray(values.about_sections)
     ? values.about_sections
@@ -45,7 +51,8 @@ export async function updateClinicSettings(values) {
     : [];
 
   const payload = {
-    id: "main",
+    id: values.id || "main",
+    clinic_id: clinicId,
     clinic_name: text(values.clinic_name),
     subtitle: text(values.subtitle),
     address: text(values.address),
@@ -72,7 +79,7 @@ export async function updateClinicSettings(values) {
 
   const { data, error } = await supabase
     .from("clinic_settings")
-    .upsert(payload, { onConflict: "id" })
+    .upsert(payload, { onConflict: "clinic_id" })
     .select("*")
     .single();
 
