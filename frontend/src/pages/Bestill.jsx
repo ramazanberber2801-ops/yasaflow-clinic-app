@@ -1,7 +1,11 @@
 import { CalendarCheck } from "lucide-react";
 import Header from "@/components/Header";
+import EmbeddedTimmaFrame from "@/components/EmbeddedTimmaFrame";
+import { useClinicSettings } from "@/contexts/ClinicSettingsContext";
 
 export default function Bestill() {
+  const { settings } = useClinicSettings();
+
   return (
     <div data-testid="page-bestill" className="min-h-screen bg-paper">
       <Header
@@ -11,13 +15,11 @@ export default function Bestill() {
       />
 
       <section className="mt-2 w-full" aria-label="Bestill time">
-        <iframe
-          title="Bestill time hos Seldaesthetic"
-          src="https://bestill.timma.no/seldaesthetic"
-          data-testid="bestill-iframe"
-          className="block w-full bg-white"
-          style={{ height: "calc(100vh - 190px)", minHeight: "760px", border: "none" }}
-          allow="payment; clipboard-write"
+        <EmbeddedTimmaFrame
+          title={`Bestill time hos ${settings.clinic_name || "klinikken"}`}
+          configuredUrl={settings.booking_url}
+          fallbackUrl="https://bestill.timma.no/seldaesthetic"
+          testId="bestill-iframe"
         />
       </section>
     </div>
