@@ -19,19 +19,29 @@ import AdminLoyaltyCampaigns from "@/pages/AdminLoyaltyCampaigns";
 import AdminAppInstall from "@/pages/AdminAppInstall";
 import InstallPrompt from "@/components/InstallPrompt";
 import PushPermissionPrompt from "@/components/PushPermissionPrompt";
+import { useClinicSettings } from "@/contexts/ClinicSettingsContext";
+
+function FeatureRoute({ enabled, children }) {
+  const { loading } = useClinicSettings();
+  if (loading) return null;
+  return enabled ? children : <Navigate to="/" replace />;
+}
 
 function App() {
+  const { settings } = useClinicSettings();
+  const notificationsEnabled = settings.push_enabled || settings.campaigns_enabled;
+
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Hjem />} />
-            <Route path="/bestill" element={<Bestill />} />
-            <Route path="/lojalitet" element={<Lojalitet />} />
-            <Route path="/gavekort" element={<Gavekort />} />
+            <Route path="/bestill" element={<FeatureRoute enabled={settings.booking_enabled}><Bestill /></FeatureRoute>} />
+            <Route path="/lojalitet" element={<FeatureRoute enabled={settings.loyalty_enabled}><Lojalitet /></FeatureRoute>} />
+            <Route path="/gavekort" element={<FeatureRoute enabled={settings.gift_card_enabled}><Gavekort /></FeatureRoute>} />
             <Route path="/profil" element={<Profil />} />
-            <Route path="/varsler" element={<Varsler />} />
+            <Route path="/varsler" element={<FeatureRoute enabled={notificationsEnabled}><Varsler /></FeatureRoute>} />
             <Route path="/kontakt" element={<Kontakt />} />
             <Route path="/om" element={<Om />} />
           </Route>
@@ -46,7 +56,7 @@ function App() {
       </BrowserRouter>
       <Toaster position="top-center" toastOptions={{ style: { background: "#FFFFFF", border: "1px solid #EBE5DC", color: "#2C2A26", fontFamily: "Manrope, sans-serif" } }} />
       <InstallPrompt />
-      <PushPermissionPrompt />
+      {settings.push_enabled && <PushPermissionPrompt />}
     </div>
   );
 }
