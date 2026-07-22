@@ -57,12 +57,22 @@ export default function Kontakt() {
 
 function BrandMonogram() {
   return (
-    <div className="w-20 h-20 mb-3" aria-label="Seldaesthetic-logo" role="img">
-      <svg viewBox="0 0 160 160" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision">
-        <circle cx="80" cy="80" r="74" fill="#FBF7EF" stroke="#C5A059" strokeWidth="2.5" />
-        <text x="48" y="78" fill="#B89953" fontFamily="Georgia, 'Times New Roman', serif" fontSize="64" fontWeight="400" textAnchor="middle">S</text>
-        <text x="112" y="126" fill="#B89953" fontFamily="Georgia, 'Times New Roman', serif" fontSize="64" fontWeight="400" textAnchor="middle">E</text>
-        <line x1="46" y1="128" x2="116" y2="30" stroke="#B89953" strokeWidth="8" strokeLinecap="square" />
+    <div className="w-24 h-24 mb-3" aria-label="Seldaesthetic-logo" role="img">
+      <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision">
+        <defs>
+          <linearGradient id="seGold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#D7BE7A" />
+            <stop offset="52%" stopColor="#B89443" />
+            <stop offset="100%" stopColor="#8F6A21" />
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#seGold)" strokeLinecap="square" strokeLinejoin="miter">
+          <path d="M84 42H39v47h45" strokeWidth="7" />
+          <path d="M84 89H47v50h37" strokeWidth="7" />
+          <path d="M116 111h42v-37h-42" strokeWidth="7" />
+          <path d="M116 111h34v47h-34" strokeWidth="7" />
+          <path d="M58 154L142 46" strokeWidth="9" />
+        </g>
       </svg>
     </div>
   );
