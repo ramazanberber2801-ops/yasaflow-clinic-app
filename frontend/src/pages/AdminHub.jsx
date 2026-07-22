@@ -12,11 +12,11 @@ export default function AdminHub() {
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
         {isPlatformAdmin && (
           <Link
-            to="/yasaflow-admin"
+            to="/clinic-platform-admin"
             className="flex h-14 items-center gap-2 rounded-full bg-[#7C5CFC] px-5 text-sm text-white shadow-xl"
-            aria-label="Åpne Yasaflow Admin"
+            aria-label="Åpne Yasaflow Clinic plattformadmin"
           >
-            <Building2 size={18} />Yasaflow Admin
+            <Building2 size={18} />Clinic plattformadmin
           </Link>
         )}
         <Link
