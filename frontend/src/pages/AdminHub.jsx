@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BarChart3, Bell, Building2, CreditCard, Gift, QrCode, Settings, Sparkles } from "lucide-react";
+import { BarChart3, Bell, Building2, CreditCard, Gift, QrCode, Settings, Sparkles, Users } from "lucide-react";
 import AdminV2 from "@/pages/AdminV2";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,6 +17,9 @@ export default function AdminHub() {
         )}
         <Link to="/admin/overview" className="flex h-12 items-center gap-2 rounded-full bg-[#2C2A26] px-4 text-sm text-white shadow-xl" aria-label="Åpne klinikkdashboard">
           <BarChart3 size={17} /> Dashboard
+        </Link>
+        <Link to="/admin/customers" className="flex h-12 items-center gap-2 rounded-full bg-[#8D7139] px-4 text-sm text-white shadow-xl" aria-label="Åpne kundelisten">
+          <Users size={17} /> Kunder
         </Link>
         <Link to="/admin/loyalty-campaigns" className="flex h-12 items-center gap-2 rounded-full bg-[#C5A059] px-4 text-sm text-white shadow-xl" aria-label="Administrer lojalitetskampanjer">
           <Gift size={17} /> Lojalitet
