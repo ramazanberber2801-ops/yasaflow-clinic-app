@@ -16,6 +16,7 @@ import Varsler from "@/pages/Varsler";
 import Admin from "@/pages/AdminHub";
 import AdminOverview from "@/pages/AdminOverview";
 import AdminSubscription from "@/pages/AdminSubscription";
+import AdminBirthdayAutomation from "@/pages/AdminBirthdayAutomation";
 import AdminSettings from "@/pages/AdminSettings";
 import AdminNotifications from "@/pages/AdminNotifications";
 import AdminLoyaltyCampaigns from "@/pages/AdminLoyaltyCampaigns";
@@ -53,6 +54,7 @@ function App() {
           <Route path="/admin" element={<ProtectedAdminRoute><Admin /></ProtectedAdminRoute>} />
           <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminOverview /></ProtectedAdminRoute>} />
           <Route path="/admin/subscription" element={<ProtectedAdminRoute><AdminSubscription /></ProtectedAdminRoute>} />
+          <Route path="/admin/birthdays" element={<ProtectedAdminRoute><AdminBirthdayAutomation /></ProtectedAdminRoute>} />
           <Route path="/admin/settings" element={<ProtectedAdminRoute><AdminSettings /></ProtectedAdminRoute>} />
           <Route path="/admin/notifications" element={<ProtectedAdminRoute><AdminNotifications /></ProtectedAdminRoute>} />
           <Route path="/admin/loyalty-campaigns" element={<ProtectedAdminRoute><AdminLoyaltyCampaigns /></ProtectedAdminRoute>} />
