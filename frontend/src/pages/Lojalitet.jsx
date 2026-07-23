@@ -5,12 +5,14 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import QRModal from "@/components/QRModal";
 import { getLoyalty, getLoyaltyRewardStatus, saveLoyaltyProfile } from "@/lib/api";
+import { listMyCustomerRewards } from "@/lib/customerRewards";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Lojalitet() {
   const { user, profile, loading: authLoading } = useAuth();
   const [card, setCard] = useState(null);
   const [rewards, setRewards] = useState([]);
+  const [assignedRewards, setAssignedRewards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [qrOpen, setQrOpen] = useState(false);
   const customerId = user?.id || null;
@@ -18,17 +20,31 @@ export default function Lojalitet() {
   const phone = profile?.phone || user?.user_metadata?.phone || "";
 
   const refresh = async () => {
-    if (!customerId) { setCard(null); setRewards([]); setLoading(false); return; }
+    if (!customerId) {
+      setCard(null);
+      setRewards([]);
+      setAssignedRewards([]);
+      setLoading(false);
+      return;
+    }
     try {
       let currentCard = await getLoyalty(customerId);
       if ((!currentCard.name || !currentCard.phone) && fullName && phone) {
         const updated = await saveLoyaltyProfile(customerId, fullName, phone);
         currentCard = { ...currentCard, ...updated };
       }
-      const status = await getLoyaltyRewardStatus(customerId, currentCard);
-      setCard(status.card); setRewards(status.rewards);
-    } catch (error) { toast.error(error.message || "Kunne ikke laste lojalitetskortet"); }
-    finally { setLoading(false); }
+      const [status, customerRewards] = await Promise.all([
+        getLoyaltyRewardStatus(customerId, currentCard),
+        listMyCustomerRewards(),
+      ]);
+      setCard(status.card);
+      setRewards(status.rewards);
+      setAssignedRewards(customerRewards);
+    } catch (error) {
+      toast.error(error.message || "Kunne ikke laste lojalitetskortet");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -37,7 +53,10 @@ export default function Lojalitet() {
     const onVisible = () => document.visibilityState === "visible" && refresh();
     document.addEventListener("visibilitychange", onVisible);
     const interval = customerId ? setInterval(refresh, 10000) : null;
-    return () => { document.removeEventListener("visibilitychange", onVisible); if (interval) clearInterval(interval); };
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      if (interval) clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, customerId, fullName, phone]);
 
@@ -51,6 +70,8 @@ export default function Lojalitet() {
   const progress = Math.min(100, (stamps / goal) * 100);
   const nextReward = rewards.find((reward) => !reward.redeemed && !reward.achieved);
   const readyRewards = rewards.filter((reward) => reward.achieved && !reward.redeemed);
+  const activeAssignedRewards = assignedRewards.filter((reward) => reward.display_status === "active");
+  const assignedRewardHistory = assignedRewards.filter((reward) => reward.display_status !== "active");
 
   return (
     <div data-testid="page-lojalitet">
@@ -71,16 +92,32 @@ export default function Lojalitet() {
         <p className="mt-4 px-5 text-center text-xs leading-relaxed text-[#6B655B]">Vis QR-koden til personalet etter behandlingen. Personalet kan gi stempel og løse inn tilgjengelige belønninger.</p>
 
         <section className="mt-7 rounded-3xl border border-[#EBE5DC] bg-white p-5">
-          <h3 className="font-serif-display text-xl text-[#2C2A26]">Dine belønninger</h3>
+          <h3 className="font-serif-display text-xl text-[#2C2A26]">Dine aktive belønninger</h3>
+          <p className="mt-1 text-xs text-[#6B655B]">Belønninger løses inn av personalet i klinikken.</p>
           <div className="mt-4 space-y-3">
-            {rewards.map((reward) => <div key={reward.id} className="flex items-start gap-3 rounded-2xl bg-[#F7F3EC] p-4"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${reward.redeemed ? "bg-[#E8E5DF] text-[#777168]" : reward.achieved ? "bg-[#C5A059] text-white" : "bg-[#F4ECD8] text-[#8C6B2F]"}`}>{reward.redeemed || reward.achieved ? <Check size={17}/> : <Gift size={17}/>}</div><div className="min-w-0"><div className="font-medium text-[#2C2A26]">{reward.title}</div><div className="mt-1 text-xs text-[#6B655B]">{reward.redeemed ? "Innløst" : reward.achieved ? "Klar til innløsning" : `Krever ${reward.stamps_required} stempler`}{reward.validity_days ? ` • gyldig i ${reward.validity_days} dager etter innløsning` : ""}</div>{reward.description && <div className="mt-1 text-xs text-[#777168]">{reward.description}</div>}</div></div>)}
+            {activeAssignedRewards.map((reward) => <AssignedReward key={reward.id} reward={reward}/>) }
+            {!activeAssignedRewards.length && <div className="text-sm text-[#6B655B]">Ingen aktive belønninger akkurat nå.</div>}
+          </div>
+        </section>
+
+        <section className="mt-7 rounded-3xl border border-[#EBE5DC] bg-white p-5">
+          <h3 className="font-serif-display text-xl text-[#2C2A26]">Stempelfordeler</h3>
+          <div className="mt-4 space-y-3">
+            {rewards.map((reward) => <div key={reward.id} className="flex items-start gap-3 rounded-2xl bg-[#F7F3EC] p-4"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${reward.redeemed ? "bg-[#E8E5DF] text-[#777168]" : reward.achieved ? "bg-[#C5A059] text-white" : "bg-[#F4ECD8] text-[#8C6B2F]"}`}>{reward.redeemed || reward.achieved ? <Check size={17}/> : <Gift size={17}/>}</div><div className="min-w-0"><div className="font-medium text-[#2C2A26]">{reward.title}</div><div className="mt-1 text-xs text-[#6B655B]">{reward.redeemed ? "Innløst av klinikken" : reward.achieved ? "Klar – vis til personalet" : `Krever ${reward.stamps_required} stempler`}{reward.validity_days ? ` • gyldig i ${reward.validity_days} dager etter innløsning` : ""}</div>{reward.description && <div className="mt-1 text-xs text-[#777168]">{reward.description}</div>}</div></div>)}
             {!rewards.length && <div className="text-sm text-[#6B655B]">Ingen belønningstrinn er satt opp ennå.</div>}
           </div>
         </section>
+
+        {assignedRewardHistory.length > 0 && <section className="mt-7 rounded-3xl border border-[#EBE5DC] bg-white p-5"><h3 className="font-serif-display text-xl text-[#2C2A26]">Belønningshistorikk</h3><div className="mt-4 space-y-3">{assignedRewardHistory.map((reward) => <AssignedReward key={reward.id} reward={reward}/>)}</div></section>}
       </div>
       {customerId && <QRModal open={qrOpen} onClose={() => setQrOpen(false)} deviceId={customerId}/>} 
     </div>
   );
+}
+
+function AssignedReward({ reward }) {
+  const statusLabel = reward.display_status === "redeemed" ? "Innløst" : reward.display_status === "expired" ? "Utløpt" : "Aktiv";
+  return <div className="flex items-start gap-3 rounded-2xl bg-[#F7F3EC] p-4"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${reward.display_status === "active" ? "bg-[#C5A059] text-white" : "bg-[#E8E5DF] text-[#777168]"}`}><Gift size={17}/></div><div className="min-w-0"><div className="font-medium text-[#2C2A26]">{reward.title}</div><div className="mt-1 text-xs text-[#6B655B]">{statusLabel}{reward.expires_at && reward.display_status === "active" ? ` • gyldig til ${new Date(reward.expires_at).toLocaleDateString("no-NO")}` : ""}{reward.redeemed_at ? ` • ${new Date(reward.redeemed_at).toLocaleDateString("no-NO")}` : ""}</div>{reward.description && <div className="mt-1 text-xs text-[#777168]">{reward.description}</div>}</div></div>;
 }
 
 function LockedLoyaltyCard() {
