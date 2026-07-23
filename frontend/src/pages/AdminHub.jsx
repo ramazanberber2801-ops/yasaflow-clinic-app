@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BarChart3, Bell, Building2, CreditCard, Gift, QrCode, Settings, Sparkles, Users } from "lucide-react";
+import { BarChart3, Bell, Building2, CreditCard, Gift, Instagram, QrCode, Settings, Sparkles, Users } from "lucide-react";
 import AdminV2 from "@/pages/AdminV2";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -23,6 +23,9 @@ export default function AdminHub() {
         </Link>
         <Link to="/admin/loyalty-campaigns" className="flex h-12 items-center gap-2 rounded-full bg-[#C5A059] px-4 text-sm text-white shadow-xl" aria-label="Administrer lojalitetskampanjer">
           <Gift size={17} /> Lojalitet
+        </Link>
+        <Link to="/admin/giveaway" className="flex h-12 items-center gap-2 rounded-full bg-[#A66A52] px-4 text-sm text-white shadow-xl" aria-label="Åpne Instagram Giveaway">
+          <Instagram size={17} /> Giveaway
         </Link>
         <Link to="/admin/notifications" className="flex h-12 items-center gap-2 rounded-full bg-[#B89953] px-4 text-sm text-white shadow-xl" aria-label="Administrer push-varsler">
           <Bell size={17} /> Push-varsler
