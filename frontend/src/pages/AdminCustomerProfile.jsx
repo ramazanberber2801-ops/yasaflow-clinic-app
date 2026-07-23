@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bell, CalendarDays, Save, Star, Tags, UserRound } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, Gift, Save, Star, Tags, UserRound } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { getCurrentClinicId } from "@/lib/currentClinic";
 import { sendPushNotification } from "@/lib/pushAdmin";
+
+const REWARD_TYPES = [
+  { value: "custom", label: "Annet" },
+  { value: "discount", label: "Rabatt" },
+  { value: "free_treatment", label: "Gratis behandling" },
+  { value: "product", label: "Produkt" },
+  { value: "gift_card", label: "Gavekort" },
+];
 
 export default function AdminCustomerProfile() {
   const navigate = useNavigate();
@@ -12,12 +20,15 @@ export default function AdminCustomerProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [rewardSaving, setRewardSaving] = useState(false);
   const [clinicId, setClinicId] = useState(null);
   const [profile, setProfile] = useState({ full_name: "", phone: "", birth_date: "", tags: [], admin_notes: "" });
   const [preferences, setPreferences] = useState({ vip: false, archived: false, marketing_consent: true, preferred_contact_channel: "push", last_visit_at: null, total_visits: 0, lifetime_value_nok: 0 });
   const [loyalty, setLoyalty] = useState(null);
+  const [rewards, setRewards] = useState([]);
   const [activity, setActivity] = useState([]);
   const [tagText, setTagText] = useState("");
+  const [rewardForm, setRewardForm] = useState({ title: "", reward_type: "custom", description: "", expires_at: "" });
 
   useEffect(() => {
     let active = true;
@@ -25,11 +36,12 @@ export default function AdminCustomerProfile() {
       try {
         const currentClinicId = await getCurrentClinicId();
         setClinicId(currentClinicId);
-        const [{ data: member, error: memberError }, { data: profileData, error: profileError }, { data: preferenceData, error: preferenceError }, { data: loyaltyData, error: loyaltyError }, { data: activityData, error: activityError }] = await Promise.all([
+        const [{ data: member, error: memberError }, { data: profileData, error: profileError }, { data: preferenceData, error: preferenceError }, { data: loyaltyData, error: loyaltyError }, { data: rewardData, error: rewardError }, { data: activityData, error: activityError }] = await Promise.all([
           supabase.from("clinic_members").select("user_id").eq("clinic_id", currentClinicId).eq("user_id", id).eq("role", "customer").maybeSingle(),
           supabase.from("profiles").select("id,full_name,phone,birth_date,tags,admin_notes,updated_at").eq("id", id).maybeSingle(),
           supabase.from("crm_customer_preferences").select("*").eq("clinic_id", currentClinicId).eq("user_id", id).maybeSingle(),
           supabase.from("loyalty_cards").select("user_id,stamps,stamp_goal,total_completed,last_stamped_at,campaign_name,reward").eq("clinic_id", currentClinicId).eq("user_id", id).maybeSingle(),
+          supabase.from("customer_rewards").select("id,title,reward_type,description,status,expires_at,redeemed_at,created_at").eq("clinic_id", currentClinicId).eq("user_id", id).order("created_at", { ascending: false }),
           supabase.from("crm_customer_activity").select("id,activity_type,title,description,occurred_at").eq("clinic_id", currentClinicId).eq("user_id", id).order("occurred_at", { ascending: false }).limit(30),
         ]);
         if (memberError) throw memberError;
@@ -37,11 +49,13 @@ export default function AdminCustomerProfile() {
         if (profileError) throw profileError;
         if (preferenceError) throw preferenceError;
         if (loyaltyError) throw loyaltyError;
+        if (rewardError) throw rewardError;
         if (activityError) throw activityError;
         if (active) {
           setProfile({ full_name: profileData?.full_name || "", phone: profileData?.phone || "", birth_date: profileData?.birth_date || "", tags: profileData?.tags || [], admin_notes: profileData?.admin_notes || "" });
           setPreferences((current) => ({ ...current, ...(preferenceData || {}) }));
           setLoyalty(loyaltyData || null);
+          setRewards(rewardData || []);
           setActivity(activityData || []);
         }
       } catch (error) {
@@ -54,6 +68,8 @@ export default function AdminCustomerProfile() {
   }, [id]);
 
   const remaining = useMemo(() => loyalty ? Math.max(0, loyalty.stamp_goal - loyalty.stamps) : null, [loyalty]);
+  const activeRewards = useMemo(() => rewards.filter((reward) => reward.status === "active" && (!reward.expires_at || new Date(reward.expires_at) >= new Date())), [rewards]);
+  const rewardHistory = useMemo(() => rewards.filter((reward) => reward.status !== "active" || (reward.expires_at && new Date(reward.expires_at) < new Date())), [rewards]);
 
   const save = async () => {
     if (!clinicId) return;
@@ -96,6 +112,49 @@ export default function AdminCustomerProfile() {
     }
   };
 
+  const createReward = async () => {
+    if (!clinicId || !rewardForm.title.trim()) return toast.error("Skriv inn navn på belønningen");
+    setRewardSaving(true);
+    try {
+      const { data, error } = await supabase.from("customer_rewards").insert({
+        clinic_id: clinicId,
+        user_id: id,
+        title: rewardForm.title.trim(),
+        reward_type: rewardForm.reward_type,
+        description: rewardForm.description.trim() || null,
+        expires_at: rewardForm.expires_at ? new Date(`${rewardForm.expires_at}T23:59:59`).toISOString() : null,
+      }).select("id,title,reward_type,description,status,expires_at,redeemed_at,created_at").single();
+      if (error) throw error;
+      const activityItem = { id: crypto.randomUUID(), activity_type: "loyalty", title: "Belønning tildelt", description: data.title, occurred_at: new Date().toISOString() };
+      const { error: activityError } = await supabase.from("crm_customer_activity").insert({ clinic_id: clinicId, user_id: id, activity_type: "loyalty", title: "Belønning tildelt", description: data.title });
+      if (activityError) throw activityError;
+      setRewards((current) => [data, ...current]);
+      setActivity((current) => [activityItem, ...current]);
+      setRewardForm({ title: "", reward_type: "custom", description: "", expires_at: "" });
+      toast.success("Belønningen er tildelt");
+    } catch (error) {
+      toast.error(error.message || "Kunne ikke tildele belønningen");
+    } finally {
+      setRewardSaving(false);
+    }
+  };
+
+  const redeemReward = async (reward) => {
+    if (!clinicId || !window.confirm(`Innløs «${reward.title}»?`)) return;
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("customer_rewards").update({ status: "redeemed", redeemed_at: now }).eq("id", reward.id).eq("clinic_id", clinicId);
+      if (error) throw error;
+      const { error: activityError } = await supabase.from("crm_customer_activity").insert({ clinic_id: clinicId, user_id: id, activity_type: "loyalty", title: "Belønning innløst", description: reward.title });
+      if (activityError) throw activityError;
+      setRewards((current) => current.map((item) => item.id === reward.id ? { ...item, status: "redeemed", redeemed_at: now } : item));
+      setActivity((current) => [{ id: crypto.randomUUID(), activity_type: "loyalty", title: "Belønning innløst", description: reward.title, occurred_at: now }, ...current]);
+      toast.success("Belønningen er innløst");
+    } catch (error) {
+      toast.error(error.message || "Kunne ikke innløse belønningen");
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-paper p-6 text-sm">Laster kundeprofil …</div>;
 
   return (
@@ -130,6 +189,17 @@ export default function AdminCustomerProfile() {
           </section>
 
           <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
+            <div className="flex items-center gap-2"><Gift size={19} className="text-[#B89953]"/><h2 className="font-serif-display text-2xl">Tildel belønning</h2></div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Field label="Navn"><input value={rewardForm.title} onChange={(e) => setRewardForm({ ...rewardForm, title: e.target.value })} placeholder="F.eks. 20 % rabatt" className="input"/></Field>
+              <Field label="Type"><select value={rewardForm.reward_type} onChange={(e) => setRewardForm({ ...rewardForm, reward_type: e.target.value })} className="input">{REWARD_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Gyldig til"><input type="date" value={rewardForm.expires_at} onChange={(e) => setRewardForm({ ...rewardForm, expires_at: e.target.value })} className="input"/></Field>
+              <Field label="Beskrivelse"><input value={rewardForm.description} onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })} placeholder="Valgfritt" className="input"/></Field>
+            </div>
+            <button disabled={rewardSaving} onClick={createReward} className="mt-4 rounded-2xl bg-[#2C2A26] px-4 py-3 text-sm text-white disabled:opacity-50">{rewardSaving ? "Tildeler …" : "Tildel belønning"}</button>
+          </section>
+
+          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
             <h2 className="font-serif-display text-2xl">Interne notater</h2>
             <textarea value={profile.admin_notes} onChange={(e) => setProfile({ ...profile, admin_notes: e.target.value })} rows={6} placeholder="Skriv notater som kun klinikken kan se" className="input mt-4 resize-none"/>
           </section>
@@ -149,6 +219,16 @@ export default function AdminCustomerProfile() {
           <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
             <h2 className="font-serif-display text-2xl">Lojalitet</h2>
             {loyalty ? <div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span>Stempler</span><strong>{loyalty.stamps}/{loyalty.stamp_goal}</strong></div><div className="h-2 overflow-hidden rounded-full bg-[#EEE8DE]"><div className="h-full bg-[#B89953]" style={{ width: `${Math.min(100, (loyalty.stamps / loyalty.stamp_goal) * 100)}%` }}/></div><p className="text-xs text-[#746E65]">{remaining === 0 ? "Belønning er klar" : `${remaining} stempel igjen til belønning`}</p></div> : <p className="mt-3 text-sm text-[#746E65]">Ingen aktivt stempelkort.</p>}
+          </section>
+
+          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
+            <h2 className="font-serif-display text-2xl">Aktive belønninger</h2>
+            <div className="mt-4 space-y-3">{activeRewards.length ? activeRewards.map((reward) => <div key={reward.id} className="rounded-2xl bg-[#F8F5F0] p-4"><div className="font-medium">{reward.title}</div>{reward.description && <div className="mt-1 text-xs text-[#746E65]">{reward.description}</div>}<div className="mt-2 text-[10px] text-[#9A9388]">{reward.expires_at ? `Gyldig til ${new Date(reward.expires_at).toLocaleDateString("no-NO")}` : "Ingen utløpsdato"}</div><button onClick={() => redeemReward(reward)} className="mt-3 rounded-xl bg-[#B89953] px-3 py-2 text-xs text-white">Innløs</button></div>) : <p className="text-sm text-[#746E65]">Ingen aktive belønninger.</p>}</div>
+          </section>
+
+          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
+            <h2 className="font-serif-display text-2xl">Belønningshistorikk</h2>
+            <div className="mt-4 space-y-3">{rewardHistory.length ? rewardHistory.map((reward) => <div key={reward.id} className="rounded-2xl bg-[#F8F5F0] p-3"><div className="text-sm font-medium">{reward.title}</div><div className="mt-1 text-xs text-[#746E65]">{reward.status === "redeemed" ? "Innløst" : "Utløpt"}{reward.redeemed_at ? ` ${new Date(reward.redeemed_at).toLocaleDateString("no-NO")}` : ""}</div></div>) : <p className="text-sm text-[#746E65]">Ingen historikk ennå.</p>}</div>
           </section>
 
           <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
