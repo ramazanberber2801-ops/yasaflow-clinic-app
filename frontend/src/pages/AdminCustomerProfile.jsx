@@ -102,7 +102,7 @@ export default function AdminCustomerProfile() {
   const sendDirectPush = async () => {
     setSending(true);
     try {
-      await sendPushNotification({ title: `Hei ${profile.full_name || "kunde"}`, message: "Vi har en personlig melding til deg fra klinikken.", category: "news", target_user_id: id });
+      await sendPushNotification({ title: `Hei ${profile.full_name || "kunde"}`, message: "Vi har en personlig melding til deg fra klinikken.", category: "news", target_user_id: id, clinic_id: clinicId });
       if (clinicId) await supabase.from("crm_customer_activity").insert({ clinic_id: clinicId, user_id: id, activity_type: "notification", title: "Personlig push sendt", description: "Et direkte push-varsel ble sendt til kunden." });
       toast.success("Push-varsel sendt");
     } catch (error) {
@@ -181,64 +181,12 @@ export default function AdminCustomerProfile() {
               <Field label="Kontaktkanal"><select value={preferences.preferred_contact_channel || "push"} onChange={(e) => setPreferences({ ...preferences, preferred_contact_channel: e.target.value })} className="input"><option value="push">Push</option><option value="email">E-post</option><option value="phone">Telefon</option><option value="sms">SMS</option><option value="none">Ingen</option></select></Field>
             </div>
           </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <div className="flex items-center gap-2"><Tags size={19} className="text-[#B89953]"/><h2 className="font-serif-display text-2xl">Etiketter</h2></div>
-            <div className="mt-4 flex gap-2"><input value={tagText} onChange={(e) => setTagText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} placeholder="Ny etikett" className="input flex-1"/><button onClick={addTag} className="rounded-2xl bg-[#F4ECD8] px-4 text-sm">Legg til</button></div>
-            <div className="mt-3 flex flex-wrap gap-2">{profile.tags.map((tag) => <button key={tag} onClick={() => setProfile((current) => ({ ...current, tags: current.tags.filter((item) => item !== tag) }))} className="rounded-full bg-[#F4F0EA] px-3 py-2 text-xs">{tag} ×</button>)}</div>
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <div className="flex items-center gap-2"><Gift size={19} className="text-[#B89953]"/><h2 className="font-serif-display text-2xl">Tildel belønning</h2></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field label="Navn"><input value={rewardForm.title} onChange={(e) => setRewardForm({ ...rewardForm, title: e.target.value })} placeholder="F.eks. 20 % rabatt" className="input"/></Field>
-              <Field label="Type"><select value={rewardForm.reward_type} onChange={(e) => setRewardForm({ ...rewardForm, reward_type: e.target.value })} className="input">{REWARD_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Gyldig til"><input type="date" value={rewardForm.expires_at} onChange={(e) => setRewardForm({ ...rewardForm, expires_at: e.target.value })} className="input"/></Field>
-              <Field label="Beskrivelse"><input value={rewardForm.description} onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })} placeholder="Valgfritt" className="input"/></Field>
-            </div>
-            <button disabled={rewardSaving} onClick={createReward} className="mt-4 rounded-2xl bg-[#2C2A26] px-4 py-3 text-sm text-white disabled:opacity-50">{rewardSaving ? "Tildeler …" : "Tildel belønning"}</button>
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Interne notater</h2>
-            <textarea value={profile.admin_notes} onChange={(e) => setProfile({ ...profile, admin_notes: e.target.value })} rows={6} placeholder="Skriv notater som kun klinikken kan se" className="input mt-4 resize-none"/>
-          </section>
-        </div>
-
-        <div className="space-y-5">
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Hurtighandlinger</h2>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <button onClick={() => setPreferences({ ...preferences, vip: !preferences.vip })} className={`rounded-2xl border p-4 text-left text-sm ${preferences.vip ? "border-[#B89953] bg-[#F4ECD8]" : "border-[#EBE5DC]"}`}><Star size={19} className="mb-3"/>{preferences.vip ? "Fjern VIP" : "Marker VIP"}</button>
-              <button disabled={sending} onClick={sendDirectPush} className="rounded-2xl border border-[#EBE5DC] p-4 text-left text-sm disabled:opacity-50"><Bell size={19} className="mb-3"/>{sending ? "Sender …" : "Send push"}</button>
-              <button onClick={() => setPreferences({ ...preferences, marketing_consent: !preferences.marketing_consent })} className="rounded-2xl border border-[#EBE5DC] p-4 text-left text-sm"><UserRound size={19} className="mb-3"/>{preferences.marketing_consent ? "Markedsføring på" : "Markedsføring av"}</button>
-              <button onClick={() => setPreferences({ ...preferences, archived: !preferences.archived })} className="rounded-2xl border border-[#EBE5DC] p-4 text-left text-sm"><CalendarDays size={19} className="mb-3"/>{preferences.archived ? "Aktiver kunde" : "Arkiver kunde"}</button>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Lojalitet</h2>
-            {loyalty ? <div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span>Stempler</span><strong>{loyalty.stamps}/{loyalty.stamp_goal}</strong></div><div className="h-2 overflow-hidden rounded-full bg-[#EEE8DE]"><div className="h-full bg-[#B89953]" style={{ width: `${Math.min(100, (loyalty.stamps / loyalty.stamp_goal) * 100)}%` }}/></div><p className="text-xs text-[#746E65]">{remaining === 0 ? "Belønning er klar" : `${remaining} stempel igjen til belønning`}</p></div> : <p className="mt-3 text-sm text-[#746E65]">Ingen aktivt stempelkort.</p>}
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Aktive belønninger</h2>
-            <div className="mt-4 space-y-3">{activeRewards.length ? activeRewards.map((reward) => <div key={reward.id} className="rounded-2xl bg-[#F8F5F0] p-4"><div className="font-medium">{reward.title}</div>{reward.description && <div className="mt-1 text-xs text-[#746E65]">{reward.description}</div>}<div className="mt-2 text-[10px] text-[#9A9388]">{reward.expires_at ? `Gyldig til ${new Date(reward.expires_at).toLocaleDateString("no-NO")}` : "Ingen utløpsdato"}</div><button onClick={() => redeemReward(reward)} className="mt-3 rounded-xl bg-[#B89953] px-3 py-2 text-xs text-white">Innløs</button></div>) : <p className="text-sm text-[#746E65]">Ingen aktive belønninger.</p>}</div>
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Belønningshistorikk</h2>
-            <div className="mt-4 space-y-3">{rewardHistory.length ? rewardHistory.map((reward) => <div key={reward.id} className="rounded-2xl bg-[#F8F5F0] p-3"><div className="text-sm font-medium">{reward.title}</div><div className="mt-1 text-xs text-[#746E65]">{reward.status === "redeemed" ? "Innløst" : "Utløpt"}{reward.redeemed_at ? ` ${new Date(reward.redeemed_at).toLocaleDateString("no-NO")}` : ""}</div></div>) : <p className="text-sm text-[#746E65]">Ingen historikk ennå.</p>}</div>
-          </section>
-
-          <section className="rounded-3xl border border-[#EBE5DC] bg-white p-5">
-            <h2 className="font-serif-display text-2xl">Historikk</h2>
-            <div className="mt-4 space-y-3">{activity.length ? activity.map((item) => <div key={item.id} className="rounded-2xl bg-[#F8F5F0] p-3"><div className="text-sm font-medium">{item.title}</div>{item.description && <div className="mt-1 text-xs text-[#746E65]">{item.description}</div>}<div className="mt-2 text-[10px] text-[#9A9388]">{new Date(item.occurred_at).toLocaleString("no-NO")}</div></div>) : <p className="text-sm text-[#746E65]">Ingen registrert aktivitet ennå.</p>}</div>
-          </section>
         </div>
       </main>
     </div>
   );
 }
 
-function Field({ label, children }) { return <label className="block text-xs text-[#746E65]"><span className="mb-2 block">{label}</span>{children}</label>; }
+function Field({ label, children }) {
+  return <label className="block text-xs text-[#746E65]"><span className="mb-2 block">{label}</span>{children}</label>;
+}
