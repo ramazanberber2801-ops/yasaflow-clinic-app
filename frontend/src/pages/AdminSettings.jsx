@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ImagePlus, Palette, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getClinicSettings, updateClinicSettings, uploadClinicAsset } from "@/lib/clinicSettings";
+import { applyThemeToDocument, CLINIC_THEMES, getTheme, resolveTheme } from "@/lib/themeEngine";
+
+const COLOR_FIELDS = [
+  ["primary", "Primærfarge"],
+  ["secondary", "Sekundærfarge"],
+  ["background", "Bakgrunn"],
+  ["card", "Kort og flater"],
+  ["text", "Tekstfarge"],
+];
 
 export default function AdminSettings() {
   const navigate = useNavigate();
@@ -18,24 +27,25 @@ export default function AdminSettings() {
       .catch((error) => toast.error(error.message || "Kunne ikke laste innstillinger"));
   }, []);
 
+  const previewTheme = useMemo(
+    () => form ? resolveTheme(form.theme_id, form.theme_overrides) : getTheme(),
+    [form?.theme_id, form?.theme_overrides],
+  );
+
+  useEffect(() => {
+    if (form) applyThemeToDocument(previewTheme);
+  }, [form, previewTheme]);
+
   const save = async () => {
-    if (!form.clinic_name.trim()) {
-      toast.error("Klinikknavn må fylles ut");
-      return;
-    }
-    if (form.booking_enabled && !form.booking_url.trim()) {
-      toast.error("Legg inn bookinglenke eller slå av timebestilling");
-      return;
-    }
-    if (form.gift_card_enabled && !form.gift_card_url.trim()) {
-      toast.error("Legg inn gavekortlenke eller slå av gavekort");
-      return;
-    }
+    if (!form.clinic_name.trim()) return toast.error("Klinikknavn må fylles ut");
+    if (form.booking_enabled && !form.booking_url.trim()) return toast.error("Legg inn bookinglenke eller slå av timebestilling");
+    if (form.gift_card_enabled && !form.gift_card_url.trim()) return toast.error("Legg inn gavekortlenke eller slå av gavekort");
 
     setBusy(true);
     try {
       const updated = await updateClinicSettings(form);
       setForm(updated);
+      applyThemeToDocument(resolveTheme(updated.theme_id, updated.theme_overrides));
       toast.success("Klinikkinnstillingene er lagret");
     } catch (error) {
       toast.error(error.message || "Kunne ikke lagre innstillingene");
@@ -44,11 +54,15 @@ export default function AdminSettings() {
     }
   };
 
-  if (!form) {
-    return <div className="min-h-screen bg-paper p-8 text-center text-[#6B655B]">Laster innstillinger...</div>;
-  }
+  if (!form) return <div className="min-h-screen bg-paper p-8 text-center text-[#6B655B]">Laster innstillinger...</div>;
 
   const field = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const chooseTheme = (themeId) => setForm((current) => ({ ...current, theme_id: themeId, theme_overrides: {} }));
+  const setThemeColor = (key, value) => setForm((current) => ({
+    ...current,
+    theme_overrides: { ...(current.theme_overrides || {}), [key]: value },
+  }));
+  const resetThemeColors = () => field("theme_overrides", {});
   const updateSection = (index, key, value) => field("about_sections", form.about_sections.map((section, i) => i === index ? { ...section, [key]: value } : section));
   const addSection = () => field("about_sections", [...form.about_sections, { title: "", text: "" }]);
   const removeSection = (index) => field("about_sections", form.about_sections.filter((_, i) => i !== index));
@@ -69,23 +83,57 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="sticky top-0 z-30 border-b border-[#EBE5DC] bg-white">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--brand-background)", color: "var(--brand-text)" }}>
+      <div className="sticky top-0 z-30 border-b bg-white" style={{ borderColor: "var(--brand-border)" }}>
         <div className="mx-auto flex max-w-screen-md items-center justify-between px-4 py-3">
-          <button onClick={() => navigate("/admin")} className="flex items-center gap-2 text-sm text-[#2C2A26]">
-            <ArrowLeft size={18} />Admin
-          </button>
-          <div className="font-serif-display text-xl text-[#B89953]">Klinikkinnstillinger</div>
+          <button onClick={() => navigate("/admin")} className="flex items-center gap-2 text-sm"><ArrowLeft size={18} />Admin</button>
+          <div className="font-serif-display text-xl" style={{ color: "var(--brand-primary)" }}>Klinikkinnstillinger</div>
           <div className="w-14" />
         </div>
       </div>
 
       <div className="mx-auto max-w-screen-md space-y-5 px-4 py-6">
+        <SettingsCard title="Tema og design" icon={<Palette size={19} />}>
+          <p className="text-sm opacity-70">Velg et ferdig tema og finjuster fargene. Endringene vises direkte før du lagrer.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {CLINIC_THEMES.map((theme) => {
+              const active = form.theme_id === theme.id;
+              return (
+                <button key={theme.id} type="button" onClick={() => chooseTheme(theme.id)} className="rounded-2xl border-2 p-4 text-left transition" style={{ borderColor: active ? theme.tokens.primary : "var(--brand-border)", backgroundColor: active ? `color-mix(in srgb, ${theme.tokens.primary} 8%, white)` : "var(--brand-card)" }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-1.5">{[theme.tokens.primary, theme.tokens.secondary, theme.tokens.background, theme.tokens.card].map((color) => <span key={color} className="h-7 w-7 rounded-full border" style={{ backgroundColor: color }} />)}</div>
+                    {active && <span className="flex h-7 w-7 items-center justify-center rounded-full text-white" style={{ backgroundColor: theme.tokens.primary }}><Check size={15} /></span>}
+                  </div>
+                  <div className="mt-3 font-medium">{theme.name}</div>
+                  <div className="mt-1 text-xs opacity-60">{theme.description}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--brand-border)", backgroundColor: "var(--brand-subtle)" }}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div><div className="font-medium">Tilpass farger</div><div className="text-xs opacity-60">Fargene gjelder bare denne klinikken.</div></div>
+              <button type="button" onClick={resetThemeColors} className="flex items-center gap-2 rounded-full border px-3 py-2 text-xs" style={{ borderColor: "var(--brand-border)" }}><RotateCcw size={14} />Tilbakestill</button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {COLOR_FIELDS.map(([key, label]) => (
+                <label key={key} className="rounded-2xl bg-white p-3 text-xs">
+                  <span className="mb-2 block opacity-65">{label}</span>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={previewTheme.tokens[key]} onChange={(event) => setThemeColor(key, event.target.value)} className="h-10 w-12 cursor-pointer rounded border-0 bg-transparent p-0" />
+                    <Input value={previewTheme.tokens[key]} onChange={(event) => setThemeColor(key, event.target.value)} className="font-mono uppercase" maxLength={7} />
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        </SettingsCard>
+
         <SettingsCard title="Profil og bilder">
           <AssetUpload label="Klinikklogo" value={form.logo_url} busy={uploading === "logo_url"} onChange={(event) => upload(event, "logo_url", "logo")} onRemove={() => field("logo_url", "")} />
           <AssetUpload label="Hovedbilde på Om oss" value={form.about_hero_image_url} busy={uploading === "about_hero_image_url"} onChange={(event) => upload(event, "about_hero_image_url", "about-hero")} onRemove={() => field("about_hero_image_url", "")} />
           <AssetUpload label="Ekstra bilde på Om oss" value={form.about_secondary_image_url} busy={uploading === "about_secondary_image_url"} onChange={(event) => upload(event, "about_secondary_image_url", "about-secondary")} onRemove={() => field("about_secondary_image_url", "")} />
-          <p className="text-xs text-[#8B857B]">JPG, PNG, WebP eller SVG. Maks 5 MB per bilde.</p>
+          <p className="text-xs opacity-60">JPG, PNG, WebP eller SVG. Maks 5 MB per bilde.</p>
         </SettingsCard>
 
         <SettingsCard title="Generelt">
@@ -115,18 +163,12 @@ export default function AdminSettings() {
           <Field label="Beskrivelse"><Textarea rows={6} value={form.about_text} onChange={(e) => field("about_text", e.target.value)} placeholder="Skriv klinikkens egen presentasjon" /></Field>
           <div className="space-y-3">
             {form.about_sections.map((section, index) => (
-              <div key={index} className="rounded-2xl border border-[#EBE5DC] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-medium text-[#6B655B]">Informasjonskort {index + 1}</span>
-                  <button type="button" onClick={() => removeSection(index)} className="text-[#9C968C]" aria-label="Fjern informasjonskort"><Trash2 size={17} /></button>
-                </div>
-                <div className="space-y-3">
-                  <Input value={section.title || ""} onChange={(e) => updateSection(index, "title", e.target.value)} placeholder="Overskrift" />
-                  <Textarea rows={3} value={section.text || ""} onChange={(e) => updateSection(index, "text", e.target.value)} placeholder="Tekst" />
-                </div>
+              <div key={index} className="rounded-2xl border p-4" style={{ borderColor: "var(--brand-border)" }}>
+                <div className="mb-3 flex items-center justify-between"><span className="text-xs font-medium opacity-70">Informasjonskort {index + 1}</span><button type="button" onClick={() => removeSection(index)} className="opacity-60" aria-label="Fjern informasjonskort"><Trash2 size={17} /></button></div>
+                <div className="space-y-3"><Input value={section.title || ""} onChange={(e) => updateSection(index, "title", e.target.value)} placeholder="Overskrift" /><Textarea rows={3} value={section.text || ""} onChange={(e) => updateSection(index, "text", e.target.value)} placeholder="Tekst" /></div>
               </div>
             ))}
-            <button type="button" onClick={addSection} className="flex w-full items-center justify-center gap-2 rounded-full border border-[#C5A059] py-3 text-sm text-[#B89953]"><Plus size={17} />Legg til informasjonskort</button>
+            <button type="button" onClick={addSection} className="flex w-full items-center justify-center gap-2 rounded-full border py-3 text-sm" style={{ borderColor: "var(--brand-primary)", color: "var(--brand-primary)" }}><Plus size={17} />Legg til informasjonskort</button>
           </div>
         </SettingsCard>
 
@@ -137,43 +179,15 @@ export default function AdminSettings() {
           <Field label="Facebook-lenke"><Input type="url" value={form.facebook_url} onChange={(e) => field("facebook_url", e.target.value)} /></Field>
         </SettingsCard>
 
-        <button disabled={busy || Boolean(uploading)} onClick={save} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#C5A059] text-white disabled:opacity-50">
-          <Save size={17} />{busy ? "Lagrer..." : "Lagre endringer"}
-        </button>
+        <button disabled={busy || Boolean(uploading)} onClick={save} className="flex h-12 w-full items-center justify-center gap-2 rounded-full disabled:opacity-50" style={{ backgroundColor: "var(--brand-primary)", color: "var(--brand-primary-text)" }}><Save size={17} />{busy ? "Lagrer..." : "Lagre endringer"}</button>
       </div>
     </div>
   );
 }
 
-function SettingsCard({ title, children }) {
-  return <section className="space-y-4 rounded-3xl border border-[#EBE5DC] bg-white p-5 shadow-sm"><h2 className="font-serif-display text-xl text-[#2C2A26]">{title}</h2>{children}</section>;
+function SettingsCard({ title, icon, children }) {
+  return <section className="space-y-4 rounded-3xl border p-5 shadow-sm" style={{ borderColor: "var(--brand-border)", backgroundColor: "var(--brand-card)", color: "var(--brand-card-text)" }}><h2 className="flex items-center gap-2 font-serif-display text-xl">{icon}{title}</h2>{children}</section>;
 }
-
-function Field({ label, children }) {
-  return <div><label className="mb-1 block text-xs text-[#6B655B]">{label}</label>{children}</div>;
-}
-
-function AssetUpload({ label, value, busy, onChange, onRemove }) {
-  return (
-    <div className="space-y-2">
-      <div className="text-xs text-[#6B655B]">{label}</div>
-      {value ? <img src={value} alt={label} className="h-36 w-full rounded-2xl border border-[#EBE5DC] object-contain bg-[#FAF8F4]" /> : <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-[#D9D1C5] bg-[#FAF8F4] text-[#9C968C]"><ImagePlus size={28} /></div>}
-      <div className="flex gap-2">
-        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-full border border-[#C5A059] px-4 py-2 text-sm text-[#B89953]">
-          {busy ? "Laster opp..." : value ? "Bytt bilde" : "Last opp bilde"}
-          <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={onChange} disabled={busy} className="hidden" />
-        </label>
-        {value && <button type="button" onClick={onRemove} className="rounded-full border border-[#EBE5DC] px-4 py-2 text-sm text-[#8A4D4D]">Fjern</button>}
-      </div>
-    </div>
-  );
-}
-
-function Toggle({ label, checked, onChange }) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-[#FAF8F4] px-4 py-3">
-      <span className="text-sm text-[#2C2A26]">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 accent-[#C5A059]" />
-    </label>
-  );
-}
+function Field({ label, children }) { return <div><label className="mb-1 block text-xs opacity-65">{label}</label>{children}</div>; }
+function AssetUpload({ label, value, busy, onChange, onRemove }) { return <div className="space-y-2"><div className="text-xs opacity-65">{label}</div>{value ? <img src={value} alt={label} className="h-36 w-full rounded-2xl border object-contain" style={{ borderColor: "var(--brand-border)", backgroundColor: "var(--brand-subtle)" }} /> : <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed opacity-60" style={{ borderColor: "var(--brand-border)", backgroundColor: "var(--brand-subtle)" }}><ImagePlus size={28} /></div>}<div className="flex gap-2"><label className="flex flex-1 cursor-pointer items-center justify-center rounded-full border px-4 py-2 text-sm" style={{ borderColor: "var(--brand-primary)", color: "var(--brand-primary)" }}>{busy ? "Laster opp..." : value ? "Bytt bilde" : "Last opp bilde"}<input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={onChange} disabled={busy} className="hidden" /></label>{value && <button type="button" onClick={onRemove} className="rounded-full border px-4 py-2 text-sm text-red-700" style={{ borderColor: "var(--brand-border)" }}>Fjern</button>}</div></div>; }
+function Toggle({ label, checked, onChange }) { return <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl px-4 py-3" style={{ backgroundColor: "var(--brand-subtle)" }}><span className="text-sm">{label}</span><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--brand-primary)" }} /></label>; }
