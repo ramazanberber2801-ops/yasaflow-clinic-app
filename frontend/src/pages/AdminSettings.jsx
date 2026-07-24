@@ -29,7 +29,7 @@ export default function AdminSettings() {
 
   const previewTheme = useMemo(
     () => form ? resolveTheme(form.theme_id, form.theme_overrides) : getTheme(),
-    [form?.theme_id, form?.theme_overrides],
+    [form],
   );
 
   useEffect(() => {
@@ -58,10 +58,7 @@ export default function AdminSettings() {
 
   const field = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const chooseTheme = (themeId) => setForm((current) => ({ ...current, theme_id: themeId, theme_overrides: {} }));
-  const setThemeColor = (key, value) => setForm((current) => ({
-    ...current,
-    theme_overrides: { ...(current.theme_overrides || {}), [key]: value },
-  }));
+  const setThemeColor = (key, value) => setForm((current) => ({ ...current, theme_overrides: { ...(current.theme_overrides || {}), [key]: value } }));
   const resetThemeColors = () => field("theme_overrides", {});
   const updateSection = (index, key, value) => field("about_sections", form.about_sections.map((section, i) => i === index ? { ...section, [key]: value } : section));
   const addSection = () => field("about_sections", [...form.about_sections, { title: "", text: "" }]);
