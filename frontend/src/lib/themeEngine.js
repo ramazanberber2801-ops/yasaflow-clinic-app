@@ -1,11 +1,11 @@
-export const DEFAULT_THEME_ID = "clinic-luxury";
+export const DEFAULT_THEME_ID = "yasaflow-standard";
 
 export const CLINIC_THEMES = [
   {
-    id: "clinic-luxury",
-    name: "Clinic Luxury",
-    description: "Varmt og eksklusivt uttrykk med gulltoner og myke flater.",
-    tokens: { primary: "#C5A059", secondary: "#2C2A26", background: "#F7F3EC", text: "#2C2A26", card: "#FFFFFF" },
+    id: "clinical-blue",
+    name: "Clinical Blue",
+    description: "Rent medisinsk uttrykk med mørk blå, grå og hvite flater.",
+    tokens: { primary: "#1E5A7A", secondary: "#5F6B73", background: "#F4F7F9", text: "#22313A", card: "#FFFFFF" },
   },
   {
     id: "nordic-clinic",
@@ -39,11 +39,16 @@ export const CLINIC_THEMES = [
   },
 ];
 
+const LEGACY_THEME_ALIASES = {
+  "clinic-luxury": "clinical-blue",
+};
+
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const TOKEN_KEYS = ["primary", "secondary", "background", "text", "card"];
 
 export function getTheme(themeId = DEFAULT_THEME_ID) {
-  return CLINIC_THEMES.find((theme) => theme.id === themeId) || CLINIC_THEMES[0];
+  const resolvedThemeId = LEGACY_THEME_ALIASES[themeId] || themeId;
+  return CLINIC_THEMES.find((theme) => theme.id === resolvedThemeId) || CLINIC_THEMES.find((theme) => theme.id === DEFAULT_THEME_ID);
 }
 
 export function sanitizeThemeOverrides(value) {
