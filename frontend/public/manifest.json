@@ -1,7 +1,7 @@
 {
-  "name": "Yasaflow Clinic",
-  "short_name": "Klinikk",
-  "description": "Klinikkapp for booking, lojalitet, gavekort og aktuelle tilbud.",
+  "name": "Seldaesthetic – Skjønnhetsklinikk",
+  "short_name": "Seldaesthetic",
+  "description": "Seldaesthetic klinikkapp for booking, lojalitet, gavekort og aktuelle tilbud.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
