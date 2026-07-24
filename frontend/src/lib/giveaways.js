@@ -3,7 +3,18 @@ import { getCurrentClinicId } from "@/lib/currentClinic";
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
-export async function fetchPublicInstagramComments(instagramUrl) {
+async function fetchBrowserComments(instagramUrl) {
+  const response = await fetch("/api/instagram-comments-browser", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ instagram_url: instagramUrl.trim() }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error || "Nettleser-betaen kunne ikke hente kommentarene");
+  return payload;
+}
+
+async function fetchSupabaseComments(instagramUrl) {
   const { data, error } = await supabase.functions.invoke("fetch-public-instagram-comments", {
     body: { instagram_url: instagramUrl.trim() },
   });
@@ -19,12 +30,33 @@ export async function fetchPublicInstagramComments(instagramUrl) {
     }
     throw new Error(message);
   }
+  return data || {};
+}
+
+export async function fetchPublicInstagramComments(instagramUrl) {
+  let browserError = null;
+  let data = null;
+
+  try {
+    data = await fetchBrowserComments(instagramUrl);
+  } catch (error) {
+    browserError = error;
+  }
+
+  if (!Array.isArray(data?.comments) || !data.comments.length) {
+    try {
+      data = await fetchSupabaseComments(instagramUrl);
+    } catch (fallbackError) {
+      throw new Error(browserError?.message || fallbackError?.message || "Kunne ikke hente kommentarer fra Instagram");
+    }
+  }
 
   return {
     comments: Array.isArray(data?.comments) ? data.comments : [],
     count: Number(data?.count || 0),
     truncated: Boolean(data?.truncated),
-    experimental: Boolean(data?.experimental),
+    experimental: true,
+    strategy: data?.strategy || "supabase-fallback",
   };
 }
 
