@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_CLINIC_SETTINGS, getClinicSettings } from "@/lib/clinicSettings";
+import { applyThemeToDocument, resolveTheme } from "@/lib/themeEngine";
 
 const ClinicSettingsContext = createContext({
   settings: DEFAULT_CLINIC_SETTINGS,
@@ -27,6 +28,15 @@ export function ClinicSettingsProvider({ children }) {
     refresh();
   }, []);
 
+  const resolvedTheme = useMemo(
+    () => resolveTheme(settings.theme_id, settings.theme_overrides),
+    [settings.theme_id, settings.theme_overrides],
+  );
+
+  useEffect(() => {
+    applyThemeToDocument(resolvedTheme);
+  }, [resolvedTheme]);
+
   useEffect(() => {
     const clinicName = settings.clinic_name?.trim() || "Klinikk";
     const subtitle = settings.subtitle?.trim();
@@ -42,6 +52,9 @@ export function ClinicSettingsProvider({ children }) {
     const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
     if (appleTitle) appleTitle.setAttribute("content", clinicName);
 
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute("content", resolvedTheme.tokens.primary);
+
     const manifest = {
       name: clinicName,
       short_name: clinicName.slice(0, 30),
@@ -50,8 +63,8 @@ export function ClinicSettingsProvider({ children }) {
       scope: "/",
       display: "standalone",
       orientation: "portrait",
-      background_color: "#FDFBF7",
-      theme_color: "#C5A059",
+      background_color: resolvedTheme.tokens.background,
+      theme_color: resolvedTheme.tokens.primary,
       lang: "nb",
       categories: ["lifestyle", "health", "beauty"],
       icons: logoUrl
@@ -88,7 +101,7 @@ export function ClinicSettingsProvider({ children }) {
 
     if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
     return () => URL.revokeObjectURL(blobUrl);
-  }, [settings.clinic_name, settings.subtitle, settings.logo_url]);
+  }, [settings.clinic_name, settings.subtitle, settings.logo_url, resolvedTheme]);
 
   const value = useMemo(() => ({ settings, loading, refresh }), [settings, loading]);
 
