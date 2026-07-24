@@ -1,6 +1,7 @@
 import { APP_CONFIG } from "@/config/appConfig";
 import { supabase } from "@/lib/supabase";
 import { getCurrentClinicId } from "@/lib/currentClinic";
+import { DEFAULT_THEME_ID, sanitizeThemeOverrides } from "@/lib/themeEngine";
 
 export const CLINIC_ASSETS_BUCKET = "clinic-assets";
 
@@ -30,6 +31,8 @@ export const DEFAULT_CLINIC_SETTINGS = {
   logo_url: "",
   about_hero_image_url: "",
   about_secondary_image_url: "",
+  theme_id: DEFAULT_THEME_ID,
+  theme_overrides: {},
 };
 
 export async function getClinicSettings() {
@@ -99,6 +102,8 @@ export async function updateClinicSettings(values) {
     logo_url: text(values.logo_url),
     about_hero_image_url: text(values.about_hero_image_url),
     about_secondary_image_url: text(values.about_secondary_image_url),
+    theme_id: text(values.theme_id) || DEFAULT_THEME_ID,
+    theme_overrides: sanitizeThemeOverrides(values.theme_overrides),
     updated_at: new Date().toISOString(),
     updated_by: sessionData.session?.user?.id || null,
   };
